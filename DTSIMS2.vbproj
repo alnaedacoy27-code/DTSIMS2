@@ -65,9 +65,15 @@
     <Compile Include="Modules\ReportData.vb" />
     <Compile Include="Modules\DutyData.vb" />
     <Compile Include="Modules\WindowStyle.vb" />
-    <Compile Include="Controls\BarChart.vb" />
-    <Compile Include="Controls\PillTabs.vb" />
-    <Compile Include="Controls\DateChip.vb" />
+    <Compile Include="Controls\BarChart.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\PillTabs.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\DateChip.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\HomeView.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -78,12 +84,8 @@
     <Compile Include="Controls\TileButton.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Forms\System\MainMenuForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\System\PlaceholderForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\System\MainMenuForm.vb" />
+    <Compile Include="Forms\System\PlaceholderForm.vb" />
     <Compile Include="Modules\AuditLog.vb" />
     <Compile Include="Modules\AuthService.vb" />
     <Compile Include="Modules\ConnectionSettings.vb" />
@@ -96,120 +98,62 @@
     <Compile Include="Controls\MaroonButton.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Forms\System\AuthShellForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\System\ConnectionSettingsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\System\LoginForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\System\SetupSuperadminForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\System\AuthShellForm.vb" />
+    <Compile Include="Forms\System\ConnectionSettingsForm.vb" />
+    <Compile Include="Forms\System\LoginForm.vb" />
+    <Compile Include="Forms\System\SetupSuperadminForm.vb" />
     <Compile Include="Controls\UiKit.vb">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Modules\UserData.vb" />
-    <Compile Include="Forms\FileMaintenance\UsersForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\FileMaintenance\UsersForm.vb" />
     <Compile Include="Forms\FileMaintenance\UserDialogs.vb">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Modules\SessionTracker.vb" />
-    <Compile Include="Forms\SystemUtilities\UserMonitoringForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\SystemUtilities\UserMonitoringForm.vb" />
     <Compile Include="Modules\FormHelpers.vb" />
     <Compile Include="Modules\ProductData.vb" />
     <Compile Include="Modules\SupplierData.vb" />
-    <Compile Include="Forms\FileMaintenance\SuppliersForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FileMaintenance\SupplierDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FileMaintenance\ProductsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FileMaintenance\ProductDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\FileMaintenance\SuppliersForm.vb" />
+    <Compile Include="Forms\FileMaintenance\SupplierDialogs.vb" />
+    <Compile Include="Forms\FileMaintenance\ProductsForm.vb" />
+    <Compile Include="Forms\FileMaintenance\ProductDialogs.vb" />
     <Compile Include="Modules\InventoryData.vb" />
     <Compile Include="Modules\DeliveryData.vb" />
     <Compile Include="Forms\Process\DeliveryDialogs.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Forms\Process\DeliveryForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\InventoryForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\StockThresholdForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\Process\DeliveryForm.vb" />
+    <Compile Include="Forms\Reports\InventoryForm.vb" />
+    <Compile Include="Forms\Settings\StockThresholdForm.vb" />
     <Compile Include="Modules\SettingsData.vb" />
-    <Compile Include="Forms\Reports\ReportFormBase.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\SalesReportForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\InventoryReportForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\DeliveryReportForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\SystemUtilities\DutyRecordsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\LossReportForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Reports\ReceiptCopyDialog.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\TextSizeForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\VatForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\DiscountDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\DiscountsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\Reports\ReportFormBase.vb" />
+    <Compile Include="Forms\Reports\SalesReportForm.vb" />
+    <Compile Include="Forms\Reports\InventoryReportForm.vb" />
+    <Compile Include="Forms\Reports\DeliveryReportForm.vb" />
+    <Compile Include="Forms\SystemUtilities\DutyRecordsForm.vb" />
+    <Compile Include="Forms\Reports\LossReportForm.vb" />
+    <Compile Include="Forms\Reports\ReceiptCopyDialog.vb" />
+    <Compile Include="Forms\Settings\TextSizeForm.vb" />
+    <Compile Include="Forms\Settings\VatForm.vb" />
+    <Compile Include="Forms\Settings\DiscountDialogs.vb" />
+    <Compile Include="Forms\Settings\DiscountsForm.vb" />
     <Compile Include="Modules\PosData.vb" />
     <Compile Include="Controls\ReceiptRenderer.vb" />
     <Compile Include="Controls\PosControls.vb" />
-    <Compile Include="Forms\Process\PosDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Process\PosForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\Process\PosDialogs.vb" />
+    <Compile Include="Forms\Process\PosForm.vb" />
     <Compile Include="Controls\Code128.vb" />
     <Compile Include="Controls\BarcodeLabels.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Forms\FileMaintenance\BarcodeDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\FileMaintenance\BarcodeDialogs.vb" />
     <Compile Include="Modules\CustomerData.vb" />
     <Compile Include="Modules\SmsService.vb" />
     <Compile Include="Controls\CardRenderer.vb" />
-    <Compile Include="Forms\Process\CustomerDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Process\CustomersForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\Process\CustomerDialogs.vb" />
+    <Compile Include="Forms\Process\CustomersForm.vb" />
     <Compile Include="Forms\Process\LoyaltyDialogs.vb" />
     <Compile Include="Controls\DetailsLayout.vb" />
     <Compile Include="Modules\ModemParsers.vb" />
