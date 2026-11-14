@@ -9,6 +9,7 @@ Imports System.Windows.Forms
 ''' Settings > Discounts. A name and a percentage; actions: add, edit, activate / deactivate, delete.
 ''' Only active discounts can be picked at the POS. Superadmin only.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class DiscountsForm
     Inherits Form
     Implements ILiveForm

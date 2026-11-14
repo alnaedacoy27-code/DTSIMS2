@@ -72,6 +72,7 @@ End Class
 ''' Utilities > Devices: see whether the SMS modem, the receipt printer and the barcode scanner are
 ''' connected and working, and test each one.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class DevicesForm
     Inherits Form
 

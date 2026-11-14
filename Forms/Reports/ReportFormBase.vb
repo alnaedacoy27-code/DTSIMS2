@@ -14,6 +14,7 @@ Imports System.Windows.Forms
 ''' charts beside the table, search, and Save PDF / Save Excel / Print. A report only supplies its views and
 ''' the ReportDoc for each (see ReportData). Data loads on a background thread so the screen never freezes.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public MustInherit Class ReportFormBase
     Inherits Form
     Implements ILiveForm
@@ -188,7 +189,7 @@ Public MustInherit Class ReportFormBase
         AddHandler _btnShortcut.Click, AddressOf OnShortcutClick
         AddHandler _btnPdf.Click, AddressOf OnSavePdf
         AddHandler _btnExcel.Click, AddressOf OnSaveExcel
-        AddHandler _btnPrint.Click, AddressOf OnPrint
+        AddHandler _btnPrint.Click, AddressOf OnPrintClick
         AddHandler _header.Resize, AddressOf OnHeaderResize
         OnHeaderResize(Me, EventArgs.Empty)
     End Sub
@@ -706,7 +707,7 @@ Public MustInherit Class ReportFormBase
         End Try
     End Sub
 
-    Private Sub OnPrint(sender As Object, e As EventArgs)
+    Private Sub OnPrintClick(sender As Object, e As EventArgs)
         If Not HasDoc() Then Return
         Try
             Try

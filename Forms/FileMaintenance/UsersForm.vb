@@ -9,6 +9,7 @@ Imports System.Windows.Forms
 ''' File Maintenance > Users. Minimal list on the left, details of the selected person on the right.
 ''' Refreshes by itself when anyone changes a user (ILiveForm).
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class UsersForm
     Inherits Form
     Implements ILiveForm

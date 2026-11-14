@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' Settings > Text Size. Pick Default, Medium or Large for THIS computer. Only text changes
 ''' (cards, inputs and buttons keep their size). The app restarts to apply it.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class TextSizeForm
     Inherits Form
 

@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' File Maintenance > Products. Every size of a product is its own item with its own barcode.
 ''' Categories are managed from here (Categories button). Refreshes by itself (ILiveForm).
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class ProductsForm
     Inherits Form
     Implements ILiveForm

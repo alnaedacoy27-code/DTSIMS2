@@ -11,6 +11,7 @@ Imports System.Windows.Forms
 ''' Point of sale. Full screen: product tiles and search on the left, the cart on the right.
 ''' Proceed slides in a payment pad, then the receipt. Special prices need an Admin's approval.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class PosForm
     Inherits Form
     Implements ILiveForm

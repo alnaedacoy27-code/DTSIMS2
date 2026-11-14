@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' Customer Accounts: members with a loyalty card, their points and their history.
 ''' Add / edit / delete, and view, save or print the card.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class CustomersForm
     Inherits Form
     Implements ILiveForm

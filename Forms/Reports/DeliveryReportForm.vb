@@ -68,6 +68,7 @@ Public Class DeliveryReportForm
 End Class
 
 ''' <summary>The items of one delivery.</summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class DeliveryItemsDialog
     Inherits Form
 

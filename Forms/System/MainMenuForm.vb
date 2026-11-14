@@ -9,6 +9,7 @@ Imports System.Windows.Forms
 ''' The main window: maroon menu bar, optional low-stock marquee, a content area where
 ''' each module opens, and a status bar. Resizable / maximizable / minimizable.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class MainMenuForm
     Inherits Form
 

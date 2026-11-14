@@ -5,6 +5,7 @@ Imports System.Drawing
 Imports System.Windows.Forms
 
 ''' <summary>Stands in for a module until we build it.</summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class PlaceholderForm
     Inherits Form
 

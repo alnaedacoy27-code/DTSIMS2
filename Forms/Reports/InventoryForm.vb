@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' Reports > Inventory. Total stock by default; filter by category, by supplier company or by one delivery batch
 ''' (then you also see how much of that delivery is still left). Low stock is flagged.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class InventoryForm
     Inherits Form
     Implements ILiveForm

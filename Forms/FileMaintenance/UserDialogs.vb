@@ -95,10 +95,17 @@ Public Class ChoiceField
 End Class
 
 ''' <summary>Base for the small pop-up windows: white, titled, maroon title bar, centered on the main window.</summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class ModalDialog
     Inherits Form
 
     Protected ReadOnly Message As New Label()
+
+    ' Visual Studio's designer builds the base class with no arguments; without this constructor it shows
+    ' "Constructor on type 'DTSIMS2.ModalDialog' not found". The real dialogs use the one below.
+    Public Sub New()
+        Me.New("", "", 520, 400)
+    End Sub
 
     Public Sub New(title As String, subtitle As String, clientWidth As Integer, clientHeight As Integer)
         Me.AutoScaleDimensions = New SizeF(96.0F, 96.0F)

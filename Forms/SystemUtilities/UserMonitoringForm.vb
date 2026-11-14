@@ -51,6 +51,7 @@ End Module
 ''' Utilities > User Monitoring (Superadmin only). Who is logged in, on which PC, how long (a live timer),
 ''' and which screen they are in right now, plus a feed of every movement.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class UserMonitoringForm
     Inherits Form
 

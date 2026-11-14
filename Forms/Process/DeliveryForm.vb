@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' Transactions > Delivery Management. Pick a supplier for a new batch, scan or pick each product,
 ''' enter quantity and prices, check the batch (totals and expected profit), then send it to inventory.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class DeliveryForm
     Inherits Form
     Implements ILiveForm

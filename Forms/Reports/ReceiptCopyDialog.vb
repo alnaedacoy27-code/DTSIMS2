@@ -8,6 +8,7 @@ Imports System.Windows.Forms
 ''' Shows a past sale's receipt exactly as it printed and lets you print a copy. The copy is stamped
 ''' "REPRINT / COPY" so it cannot be mistaken for the original, and every reprint is written to the audit trail.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class ReceiptCopyDialog
     Inherits Form
 

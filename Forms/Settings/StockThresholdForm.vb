@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 ''' Settings > Stock Threshold. For each item: at what quantity should the red low-stock warning appear?
 ''' (0 = no warning). Superadmin only.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class StockThresholdForm
     Inherits Form
     Implements ILiveForm

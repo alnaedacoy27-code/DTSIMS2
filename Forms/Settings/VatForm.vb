@@ -11,6 +11,7 @@ Imports System.Windows.Forms
 ''' Settings > VAT. Shows the current VAT rate and lets the Superadmin update it.
 ''' Selling prices already include VAT; the rate is only used to show the VAT inside a price.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class VatForm
     Inherits Form
     Implements ILiveForm

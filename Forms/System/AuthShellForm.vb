@@ -9,6 +9,7 @@ Imports System.Windows.Forms
 ''' Shared look of the setup / login / connection dialogs: maroon brand panel on the left,
 ''' white form area on the right. Fixed size, centered on screen.
 ''' </summary>
+<System.ComponentModel.DesignerCategory("Code")>
 Public Class AuthShellForm
     Inherits Form
 
