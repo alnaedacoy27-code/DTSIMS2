@@ -93,8 +93,8 @@ Public Class DevicesForm
     Private ReadOnly _lnkSmart As New LinkLabel()
     Private ReadOnly _cfgFlow As New FlowLayoutPanel()
     Private ReadOnly _method As New ChoiceField("Check the load by", 230)
-    Private ReadOnly _number As New InputField("Send to number", InputKind.Text, 120, False)
-    Private ReadOnly _keyword As New InputField("Word to send", InputKind.Text, 120, False)
+    Private ReadOnly _number As New InputField("Send to number", InputKind.Phone, 120, False)
+    Private ReadOnly _keyword As New InputField("Word to send", InputKind.Username, 120, False)
     Private ReadOnly _ussd As New InputField("USSD code", InputKind.Text, 140, False)
     Private ReadOnly _cost As New InputField("Price of 1 text (PHP)", InputKind.Money, 150, False)
     Private ReadOnly _btnSave As New MaroonButton()
@@ -130,18 +130,18 @@ Public Class DevicesForm
         Font = Theme.FontBase
 
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
         _title.Text = "Devices"
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
         _subtitle.AutoSize = True
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
         _subtitle.Text = "Check that the SMS modem, the receipt printer and the barcode scanner are connected and working"
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
         _header.Controls.Add(_title)
         _header.Controls.Add(_subtitle)
 
@@ -250,6 +250,9 @@ Public Class DevicesForm
         _method.Value = "Text a word to a number"
         _cost.MaxLength = 7
         _cost.Value = "1"
+        _number.MaxLength = 15
+        _keyword.MaxLength = 20
+        _ussd.MaxLength = 20
 
         _cfgFlow.Location = New Point(Theme.S(20), Theme.S(374))
         _cfgFlow.Size = New Size(Theme.S(800), Theme.S(170))

@@ -24,6 +24,8 @@ Public Class MainMenuForm
     Private ReadOnly _clock As New Timer()
     Private ReadOnly _live As New LiveSync()
     Private _lowStockSig As String = ""
+    Private _accessSig As String = ""
+    Private _currentKey As String = ""
     Private _posMode As Boolean
     Private _prevBorder As FormBorderStyle
     Private _prevState As FormWindowState
@@ -86,6 +88,7 @@ Public Class MainMenuForm
 
     ' ------------------------------------------------------------------ build / rebuild
     Private Sub RebuildForRole()
+        _accessSig = Permissions.Signature(AppSession.Role)
         BuildMenu()
         UpdateStatus()
         ShowHome()
@@ -193,10 +196,20 @@ Public Class MainMenuForm
         AddHandler homeView.ModuleRequested, AddressOf OpenModule
         ClearContent()
         _content.Controls.Add(homeView)
+        _currentKey = ""
         SessionTracker.SetModuleAsync("Home")
     End Sub
 
+    ''' <summary>A backup, restore or reset is running: say so instead of leaving the screen.</summary>
+    Private Function BlockedByDatabaseTask() As Boolean
+        If Not BackupService.IsBusy Then Return False
+        MessageBox.Show(Me, "A database backup, restore or reset is still running." & Environment.NewLine &
+                        "Please wait until it is finished.", "Please wait", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        Return True
+    End Function
+
     Private Sub OpenModule(info As ModuleInfo)
+        If BlockedByDatabaseTask() Then Return
         If Not Permissions.CanAccess(AppSession.Role, info.Key) Then
             MessageBox.Show(Me, "You do not have access to " & info.Title & ".", "Access denied",
                             MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -213,7 +226,12 @@ Public Class MainMenuForm
         ClearContent()
         _content.Controls.Add(frm)
         frm.Show()
+        _currentKey = info.Key
         SessionTracker.SetModuleAsync(info.Title)
+
+        ' after a restore the accounts may be different: log in again
+        Dim dbs As DatabaseSettingsForm = TryCast(frm, DatabaseSettingsForm)
+        If dbs IsNot Nothing Then AddHandler dbs.RestoreFinished, AddressOf OnRestoreFinished
 
         ' the POS is POS only: full screen, no menu, no low-stock line, and its own Exit button
         Dim pos As PosForm = TryCast(frm, PosForm)
@@ -298,6 +316,10 @@ Public Class MainMenuForm
                 Return New DiscountsForm()
             Case "user_monitoring"
                 Return New UserMonitoringForm()
+            Case "database_settings"
+                Return New DatabaseSettingsForm()
+            Case "permissions"
+                Return New PermissionsForm()
             Case Else
                 Return New PlaceholderForm(info.Title, info.Description)
         End Select
@@ -305,7 +327,14 @@ Public Class MainMenuForm
 
     ' ------------------------------------------------------------------ events
     Private Sub OnHomeClick(sender As Object, e As EventArgs)
+        If BlockedByDatabaseTask() Then Return
         ShowHome()
+    End Sub
+
+    Private Sub OnRestoreFinished()
+        CloseOwnedForms()
+        LoggedOut = True
+        Close()
     End Sub
 
     Private Sub OnMenuItemClick(sender As Object, e As EventArgs)
@@ -316,6 +345,7 @@ Public Class MainMenuForm
     End Sub
 
     Private Sub OnLogoutClick(sender As Object, e As EventArgs)
+        If BlockedByDatabaseTask() Then Return
         If MessageBox.Show(Me, "Log out of the system?", "Log out",
                            MessageBoxButtons.YesNo, MessageBoxIcon.Question) = DialogResult.Yes Then
             LoggedOut = True
@@ -342,12 +372,42 @@ Public Class MainMenuForm
 
     ''' <summary>Tables changed somewhere: refresh the open screen if it shows them.</summary>
     Private Sub OnLiveDataChanged(tables As List(Of String))
+        If tables.Contains("*") OrElse tables.Contains("role_permissions") OrElse tables.Contains("user_permissions") Then
+            If ApplyPermissionChanges() Then Return
+        End If
         If tables.Contains("*") OrElse tables.Contains("products") Then RefreshLowStock()
         If _content.Controls.Count = 0 Then Return
         Dim live As ILiveForm = TryCast(_content.Controls(0), ILiveForm)
         If live Is Nothing Then Return
         If LiveSync.Affects(live.WatchedTables, tables) Then live.RefreshData()
     End Sub
+
+    ''' <summary>
+    ''' Permission Maintenance changed something: reload, and when this person's access changed,
+    ''' rebuild the menu (and leave a screen they may no longer open). True when the screen was replaced.
+    ''' </summary>
+    Private Function ApplyPermissionChanges() As Boolean
+        Permissions.Reload()
+        Dim sig As String = Permissions.Signature(AppSession.Role)
+        If sig = _accessSig Then Return False
+        _accessSig = sig
+        BuildMenu()
+
+        If _currentKey.Length > 0 AndAlso Not Permissions.CanAccess(AppSession.Role, _currentKey) Then
+            If BackupService.IsBusy Then Return False
+            CloseOwnedForms()
+            ShowHome()
+            MessageBox.Show(Me, "Your access was changed by the Superadmin." & Environment.NewLine &
+                            "You can no longer open that screen. Your menu has been updated.",
+                            "Access changed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return True
+        End If
+        If _currentKey.Length = 0 AndAlso Not _posMode Then
+            ShowHome()      ' the home tiles follow the new access
+            Return True
+        End If
+        Return False
+    End Function
 
     Private Sub OnLiveConnectionChanged(connected As Boolean)
         SetServerLabel(connected)
@@ -376,7 +436,9 @@ Public Class MainMenuForm
                 Close()
 
             Case LiveSecurityEvent.RoleChanged
+                If BackupService.IsBusy Then Return
                 AppSession.Role = detail
+                Permissions.Reload()
                 MessageBox.Show(Me,
                     "Your role was changed to " & Permissions.RoleDisplay(detail) & "." & Environment.NewLine &
                     "Your menu has been updated.",
@@ -416,7 +478,19 @@ Public Class MainMenuForm
     Protected Overrides Sub OnKeyDown(e As KeyEventArgs)
 #If DEBUG Then
         ' Debug builds only: Ctrl+Shift+R cycles superadmin -> admin -> cashier to preview each role.
+        ' Only for an account that really is the Superadmin in the database: the app is published from a
+        ' Debug build, and without this check any cashier could press it to get the Superadmin menus.
         If e.Control AndAlso e.Shift AndAlso e.KeyCode = Keys.R Then
+            Dim realRole As String = ""
+            Try
+                realRole = Permissions.NormalizeRole(UserRepository.GetRole(AppSession.UserId))
+            Catch
+                realRole = ""
+            End Try
+            If realRole <> "superadmin" Then
+                e.Handled = True
+                Return
+            End If
             Select Case Permissions.NormalizeRole(AppSession.Role)
                 Case "superadmin"
                     AppSession.Role = "admin"
@@ -434,6 +508,11 @@ Public Class MainMenuForm
     End Sub
 
     Protected Overrides Sub OnFormClosing(e As FormClosingEventArgs)
+        If BackupService.IsBusy AndAlso e.CloseReason = CloseReason.UserClosing Then
+            BlockedByDatabaseTask()
+            e.Cancel = True
+            Return
+        End If
         If Not LoggedOut AndAlso Not RequireSetup AndAlso e.CloseReason = CloseReason.UserClosing Then
             If MessageBox.Show(Me, "Do you want to exit the system?", "Confirm exit",
                                MessageBoxButtons.YesNo, MessageBoxIcon.Question) = DialogResult.No Then

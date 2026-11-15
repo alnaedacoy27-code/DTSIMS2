@@ -44,20 +44,20 @@ Public Class VatForm
         Font = Theme.FontBase
 
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
 
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
         _title.Text = "VAT"
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
 
         _subtitle.AutoSize = True
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
         _subtitle.Text = "The VAT rate of the system"
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
 
         _header.Controls.Add(_title)
         _header.Controls.Add(_subtitle)
@@ -130,9 +130,23 @@ Public Class VatForm
 
         _body.Controls.Add(_card)
         _body.Controls.Add(_note)
+        AddHandler _body.Resize, Sub(s, e) PlaceNote()
 
         Controls.Add(_body)
         Controls.Add(_header)
+    End Sub
+
+    ''' <summary>The explanation goes beside the card on a wide window (no empty half screen), under it on a narrow one.</summary>
+    Private Sub PlaceNote()
+        Dim besideX As Integer = _card.Right + Theme.S(32)
+        Dim besideW As Integer = _body.ClientSize.Width - besideX - Theme.S(32)
+        If besideW >= Theme.S(360) Then
+            _note.Location = New Point(besideX, _card.Top + Theme.S(20))
+            _note.Size = New Size(Math.Min(besideW, Theme.S(560)), _card.Height - Theme.S(20))
+        Else
+            _note.Location = New Point(Theme.S(34), _card.Bottom + Theme.S(20))
+            _note.Size = New Size(Theme.S(620), Theme.S(300))
+        End If
     End Sub
 
     Public ReadOnly Property WatchedTables As String() Implements ILiveForm.WatchedTables

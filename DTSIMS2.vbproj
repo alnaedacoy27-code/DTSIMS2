@@ -30,7 +30,7 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>2</ApplicationRevision>
+    <ApplicationRevision>3</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -64,7 +64,7 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>DT logo.ico</ApplicationIcon>
+    <ApplicationIcon>dtsims logo.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
@@ -162,6 +162,8 @@
     <Compile Include="Forms\Reports\InventoryForm.vb" />
     <Compile Include="Forms\Settings\StockThresholdForm.vb" />
     <Compile Include="Modules\SettingsData.vb" />
+    <Compile Include="Modules\BackupService.vb" />
+    <Compile Include="Modules\SchemaUpgrade.vb" />
     <Compile Include="Forms\Reports\ReportFormBase.vb" />
     <Compile Include="Forms\Reports\SalesReportForm.vb" />
     <Compile Include="Forms\Reports\InventoryReportForm.vb" />
@@ -171,6 +173,15 @@
     <Compile Include="Forms\Reports\ReceiptCopyDialog.vb" />
     <Compile Include="Forms\Settings\TextSizeForm.vb" />
     <Compile Include="Forms\Settings\VatForm.vb" />
+    <Compile Include="Forms\Settings\DatabaseDialogs.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Settings\DatabaseSettingsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Settings\PermissionsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\Settings\DiscountDialogs.vb" />
     <Compile Include="Forms\Settings\DiscountsForm.vb" />
     <Compile Include="Modules\PosData.vb" />
@@ -219,6 +230,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="DT logo.ico" />
+    <Content Include="dtsims logo.ico" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />

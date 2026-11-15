@@ -27,6 +27,13 @@ Public Class ConnectionSettingsForm
         AddHeading("Connect to the database",
                    "On the main laptop use localhost. On the other laptops, enter the main laptop's name or IP address.")
 
+        _server.MaxLength = 100
+        _port.Kind = InputKind.WholeNumber
+        _port.MaxLength = 5
+        _database.MaxLength = 64
+        _user.MaxLength = 32
+        _password.MaxLength = 100
+
         Dim cur As ConnectionSettings = Db.Settings
         _server.Value = cur.Server
         _port.Value = cur.Port.ToString()

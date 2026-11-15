@@ -44,13 +44,18 @@ Public Module InputRules
     Private ReadOnly MoneyLive As New Regex("^\d{0,9}(\.\d{0,2})?$")
     Private ReadOnly UsernameFull As New Regex("^[A-Za-z0-9._\-]{3,30}$")
     Private ReadOnly MobileFull As New Regex("^09\d{9}$")
-    Private ReadOnly EmailFull As New Regex("^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+    ' name@domain.tld: no leading/trailing/double dots, domain labels that do not start or end with a dash
+    Private ReadOnly EmailFull As New Regex(
+        "^[A-Za-z0-9_%+\-]+(\.[A-Za-z0-9_%+\-]+)*@([A-Za-z0-9]([A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$")
+
+    ''' <summary>The longest name of a person or a thing (products, companies, categories, discounts).</summary>
+    Public Const MaxNameLength As Integer = 100
     Private ReadOnly BarcodeFull As New Regex("^[A-Za-z0-9\-]{4,20}$")
 
     Public Function DefaultMaxLength(kind As InputKind) As Integer
         Select Case kind
             Case InputKind.PersonName
-                Return 100
+                Return MaxNameLength
             Case InputKind.Username
                 Return 30
             Case InputKind.MobilePH
@@ -60,9 +65,9 @@ Public Module InputRules
             Case InputKind.Email
                 Return 100
             Case InputKind.Address
-                Return 255
-            Case InputKind.Title
                 Return 150
+            Case InputKind.Title
+                Return MaxNameLength
             Case InputKind.Password
                 Return 64
             Case InputKind.WholeNumber
@@ -74,8 +79,16 @@ Public Module InputRules
             Case InputKind.Barcode
                 Return 20
             Case Else
-                Return 255
+                ' free text and search boxes (give a field more with .MaxLength when its column allows it)
+                Return 100
         End Select
+    End Function
+
+    Private Function HasLetterOrDigit(t As String) As Boolean
+        For Each c As Char In t
+            If Char.IsLetterOrDigit(c) Then Return True
+        Next
+        Return False
     End Function
 
     Private Function IsDigit(c As Char) As Boolean
@@ -166,6 +179,12 @@ Public Module InputRules
 
         If t.Length = 0 Then Return If(required, name & " is required.", "")
 
+        ' pasted or set from code: the box limits typing, this catches the rest
+        If kind <> InputKind.Password AndAlso t.Length > DefaultMaxLength(kind) AndAlso
+           (kind <> InputKind.Text) Then
+            Return name & " can be at most " & DefaultMaxLength(kind) & " characters."
+        End If
+
         Select Case kind
             Case InputKind.PersonName
                 Dim letters As Integer = 0
@@ -192,10 +211,12 @@ Public Module InputRules
                 If digits < 7 OrElse digits > 15 Then Return name & " must have 7 to 15 digits."
 
             Case InputKind.Email
-                If Not EmailFull.IsMatch(t) Then Return name & " is not a valid email address."
+                If Not EmailFull.IsMatch(t) Then Return name & " is not a valid email address, for example name@gmail.com."
+                If t.IndexOf("@"c) > 64 Then Return name & " has too many characters before the @."
 
             Case InputKind.Address, InputKind.Title
                 If t.Length < 2 Then Return name & " is too short."
+                If Not HasLetterOrDigit(t) Then Return name & " must contain letters or numbers."
 
             Case InputKind.Measurement
                 If t.Length < 1 Then Return name & " is required."

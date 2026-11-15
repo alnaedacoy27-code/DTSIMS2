@@ -28,6 +28,7 @@ Public Module Program
         End Using
 
         PerfLog.Mark("login accepted")
+        Permissions.Reload()                               ' role and per-user access from Permission Maintenance
         SessionTracker.StartSession()
         PerfLog.Mark("session started")
         Dim mainForm As New MainMenuForm()
@@ -38,6 +39,7 @@ Public Module Program
         SessionTracker.EndSession()
 
         AppSession.Clear()
+        Permissions.ClearUser()
         Return again
     End Function
 

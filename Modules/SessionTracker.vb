@@ -13,6 +13,13 @@ Public Module SessionTracker
 
     Private _sessionId As String = ""
 
+    ''' <summary>This login's row in user_sessions ("" when none). A system reset keeps it.</summary>
+    Public ReadOnly Property CurrentSessionId As String
+        Get
+            Return _sessionId
+        End Get
+    End Property
+
     Public Sub StartSession()
         _sessionId = Guid.NewGuid().ToString("N")
         Try

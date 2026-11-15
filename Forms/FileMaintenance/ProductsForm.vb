@@ -100,20 +100,20 @@ Public Class ProductsForm
     ' ------------------------------------------------------------------ building
     Private Sub BuildHeader()
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
 
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
         _title.Text = "Products"
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
 
         _subtitle.AutoSize = True
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
         _subtitle.Text = "Everything you sell. Each size is its own item with its own barcode"
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
 
         _filter.DropDownStyle = ComboBoxStyle.DropDownList
         _filter.FlatStyle = FlatStyle.Flat
@@ -145,10 +145,10 @@ Public Class ProductsForm
     End Sub
 
     Private Sub OnHeaderResize(sender As Object, e As EventArgs)
-        _add.Location = New Point(Math.Max(Theme.S(300), _header.ClientSize.Width - Theme.S(32) - _add.Width), Theme.S(30))
-        _categories.Location = New Point(Math.Max(0, _add.Left - Theme.S(12) - _categories.Width), Theme.S(30))
-        _search.Location = New Point(Math.Max(0, _categories.Left - Theme.S(12) - _search.Width), Theme.S(30))
-        _filter.Location = New Point(Math.Max(0, _search.Left - Theme.S(12) - _filter.Width), Theme.S(30) + (Theme.S(40) - _filter.Height) \ 2)
+        _add.Location = New Point(Math.Max(Theme.S(300), _header.ClientSize.Width - Theme.S(32) - _add.Width), Theme.S(18))
+        _categories.Location = New Point(Math.Max(0, _add.Left - Theme.S(12) - _categories.Width), Theme.S(18))
+        _search.Location = New Point(Math.Max(0, _categories.Left - Theme.S(12) - _search.Width), Theme.S(18))
+        _filter.Location = New Point(Math.Max(0, _search.Left - Theme.S(12) - _filter.Width), Theme.S(18) + (Theme.S(40) - _filter.Height) \ 2)
     End Sub
 
     Private Sub BuildStats()

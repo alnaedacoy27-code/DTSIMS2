@@ -162,18 +162,18 @@ Public MustInherit Class ReportFormBase
 
     Private Sub BuildHeader()
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
 
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
 
         _subtitle.AutoSize = False
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
         _subtitle.Size = New Size(Theme.S(700), Theme.S(28))
         _subtitle.AutoEllipsis = True
 

@@ -48,7 +48,8 @@ Public Module ModuleCatalog
         l.Add(New ModuleInfo("vat", "Settings", "VAT", "VAT name and percentage"))
         l.Add(New ModuleInfo("discounts", "Settings", "Discounts", "Discount names and percentages"))
         l.Add(New ModuleInfo("stock_threshold", "Settings", "Stock Threshold", "Minimum stock warning levels"))
-        l.Add(New ModuleInfo("database_settings", "Settings", "Database Settings", "Backup, restore and backup folder"))
+        l.Add(New ModuleInfo("database_settings", "Settings", "Database Settings", "Backup, restore, backup folder and system reset"))
+        l.Add(New ModuleInfo("permissions", "Settings", "Permission Maintenance", "Which roles and users can open each module"))
         l.Add(New ModuleInfo("text_size", "Settings", "Text Size", "Make the text bigger or smaller on this computer"))
 
         l.Add(New ModuleInfo("devices", "Utilities", "Devices", "SMS modem, receipt printer and barcode scanner: check and test", Keys.Alt Or Keys.E))

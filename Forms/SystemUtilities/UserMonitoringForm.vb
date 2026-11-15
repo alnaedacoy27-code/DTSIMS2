@@ -162,20 +162,20 @@ Public Class UserMonitoringForm
 
     Private Sub BuildHeader()
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
 
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
         _title.Text = "User Monitoring"
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
 
         _subtitle.AutoSize = True
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
         _subtitle.Text = "Who is logged in, on which PC, and what they are doing right now"
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
 
         _search.Size = New Size(Theme.S(300), Theme.S(40))
         AddHandler _search.SearchChanged, AddressOf OnSearchChanged
@@ -188,7 +188,7 @@ Public Class UserMonitoringForm
     End Sub
 
     Private Sub OnHeaderResize(sender As Object, e As EventArgs)
-        _search.Location = New Point(Math.Max(0, _header.ClientSize.Width - Theme.S(32) - _search.Width), Theme.S(30))
+        _search.Location = New Point(Math.Max(0, _header.ClientSize.Width - Theme.S(32) - _search.Width), Theme.S(18))
     End Sub
 
     Private Sub BuildStats()

@@ -44,6 +44,28 @@ Public Module AuthService
         End Try
     End Function
 
+    ''' <summary>
+    ''' Step 1 of the two-step check before a backup, restore, delete or reset:
+    ''' is this the password of the logged-in Superadmin? Every attempt is written to the audit trail.
+    ''' </summary>
+    Public Function VerifySuperadminPassword(password As String, actionName As String) As Boolean
+        If String.IsNullOrEmpty(password) OrElse AppSession.UserId <= 0 Then Return False
+        Dim stored As Object = Nothing
+        Try
+            stored = Db.Scalar("SELECT password_hash FROM users WHERE id = @id AND role = 'superadmin' AND is_active = 1",
+                               Db.Params("@id", AppSession.UserId))
+        Catch
+            Return False
+        End Try
+        Dim ok As Boolean = stored IsNot Nothing AndAlso stored IsNot DBNull.Value AndAlso
+                            PasswordHasher.Verify(password, stored.ToString())
+        If Not ok Then
+            AuditLog.Write("VERIFY_FAILED", "Database Settings", "Wrong Superadmin password before: " & actionName)
+            System.Threading.Thread.Sleep(800)
+        End If
+        Return ok
+    End Function
+
     ''' <summary>Checks the login and, on success, fills AppSession.</summary>
     Public Function TryLogin(username As String, password As String, ByRef message As String) As Boolean
         message = ""

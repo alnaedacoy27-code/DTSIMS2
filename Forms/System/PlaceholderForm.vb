@@ -22,7 +22,7 @@ Public Class PlaceholderForm
 
         Dim header As New Panel()
         header.Dock = DockStyle.Top
-        header.Height = Theme.S(100)
+        header.Height = Theme.S(80)
         header.BackColor = Color.White
 
         Dim t As New Label()
@@ -30,14 +30,14 @@ Public Class PlaceholderForm
         t.Font = Theme.FontTitle
         t.ForeColor = Theme.Maroon
         t.Text = title
-        t.Location = New Point(Theme.S(32), Theme.S(18))
+        t.Location = New Point(Theme.S(32), Theme.S(10))
 
         Dim d As New Label()
         d.AutoSize = True
         d.Font = Theme.FontBase
         d.ForeColor = Theme.TextMuted
         d.Text = description
-        d.Location = New Point(Theme.S(35), Theme.S(62))
+        d.Location = New Point(Theme.S(35), Theme.S(50))
 
         Dim line As New Panel()
         line.Dock = DockStyle.Bottom

@@ -131,20 +131,20 @@ Public Class DeliveryForm
     ' ------------------------------------------------------------------ building
     Private Sub BuildHeader()
         _header.Dock = DockStyle.Top
-        _header.Height = Theme.S(100)
+        _header.Height = Theme.S(80)
         _header.BackColor = Color.White
 
         _title.AutoSize = True
         _title.Font = Theme.FontTitle
         _title.ForeColor = Theme.Maroon
         _title.Text = "Delivery Management"
-        _title.Location = New Point(Theme.S(32), Theme.S(16))
+        _title.Location = New Point(Theme.S(32), Theme.S(10))
 
         _subtitle.AutoSize = True
         _subtitle.Font = Theme.FontBase
         _subtitle.ForeColor = Theme.TextMuted
         _subtitle.Text = "Receive a supplier's delivery: build a batch, check it, then send it to inventory"
-        _subtitle.Location = New Point(Theme.S(35), Theme.S(62))
+        _subtitle.Location = New Point(Theme.S(35), Theme.S(50))
 
         _newBatch.Text = "+  New batch"
         _newBatch.Size = New Size(Theme.S(150), Theme.S(40))
@@ -158,7 +158,7 @@ Public Class DeliveryForm
     End Sub
 
     Private Sub OnHeaderResize(sender As Object, e As EventArgs)
-        _newBatch.Location = New Point(Math.Max(Theme.S(300), _header.ClientSize.Width - Theme.S(32) - _newBatch.Width), Theme.S(30))
+        _newBatch.Location = New Point(Math.Max(Theme.S(300), _header.ClientSize.Width - Theme.S(32) - _newBatch.Width), Theme.S(18))
     End Sub
 
     Private Sub BuildLeft()

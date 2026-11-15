@@ -16,7 +16,7 @@ End Enum
 Public Module Db
 
     ''' <summary>The schema_version this build of the app expects.</summary>
-    Public Const RequiredSchemaVersion As Integer = 6
+    Public Const RequiredSchemaVersion As Integer = 7
 
     Private _settings As New ConnectionSettings()
 
@@ -116,6 +116,16 @@ Public Module Db
                 conn.Open()
                 Using cmd As New MySqlCommand("SELECT COALESCE(MAX(version), 0) FROM schema_version", conn)
                     Dim v As Integer = Convert.ToInt32(cmd.ExecuteScalar())
+                    If v >= 6 AndAlso v < RequiredSchemaVersion Then
+                        ' close enough: upgrade in place (new tables only, nothing is removed)
+                        Try
+                            v = SchemaUpgrade.Apply(conn, v)
+                        Catch ex As Exception
+                            message = "The database needs an update the app could not make: " & ex.Message &
+                                      " Run Database/07_permissions_and_reset.sql in MySQL Workbench."
+                            Return DbStatus.SchemaOutdated
+                        End Try
+                    End If
                     If v < RequiredSchemaVersion Then
                         message = "The database is out of date (version " & v & ", this app needs " & RequiredSchemaVersion &
                                   "). Run the newer scripts in the Database folder."
