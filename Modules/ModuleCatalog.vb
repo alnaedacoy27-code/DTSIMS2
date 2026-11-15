@@ -53,6 +53,7 @@ Public Module ModuleCatalog
         l.Add(New ModuleInfo("text_size", "Settings", "Text Size", "Make the text bigger or smaller on this computer"))
 
         l.Add(New ModuleInfo("devices", "Utilities", "Devices", "SMS modem, receipt printer and barcode scanner: check and test", Keys.Alt Or Keys.E))
+        l.Add(New ModuleInfo("audit_trail", "Utilities", "Audit Trail", "Who did what, when and on which computer", Keys.Alt Or Keys.T))
 
         Return l
     End Function

@@ -18,13 +18,13 @@ Imports System.Text
 Public Module Permissions
 
     ''' <summary>Only the Superadmin can ever open these.</summary>
-    Public ReadOnly SuperadminOnly As String() = {"database_settings", "permissions"}
+    Public ReadOnly SuperadminOnly As String() = {"database_settings", "permissions", "audit_trail"}
 
     ''' <summary>The roles whose access can be changed.</summary>
     Public ReadOnly EditableRoles As String() = {"admin", "cashier"}
 
     ' factory defaults
-    Private ReadOnly AdminDenied As String() = {"vat", "discounts", "stock_threshold", "database_settings", "user_monitoring", "permissions"}
+    Private ReadOnly AdminDenied As String() = {"vat", "discounts", "stock_threshold", "database_settings", "user_monitoring", "permissions", "audit_trail"}
     Private ReadOnly CashierAllowed As String() = {"pos", "sales_report", "text_size"}
 
     Private ReadOnly _lock As New Object()

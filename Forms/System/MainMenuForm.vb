@@ -320,6 +320,8 @@ Public Class MainMenuForm
                 Return New DatabaseSettingsForm()
             Case "permissions"
                 Return New PermissionsForm()
+            Case "audit_trail"
+                Return New AuditTrailForm()
             Case Else
                 Return New PlaceholderForm(info.Title, info.Description)
         End Select

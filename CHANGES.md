@@ -31,6 +31,12 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
 - Saved at once; every laptop updates its menu within seconds (and leaves a screen it may no longer open).
 - If the tables cannot be read, the built-in defaults apply, so nobody is locked out.
 
+### Utilities > Audit Trail (Superadmin only)
+- A read-only record of every action: who did what, on which screen, on which computer, and when.
+- Views: *Activity log* (every entry, searchable), *Summary* (actions by type and per day), *By person*.
+- Daily / Weekly / Monthly, Save PDF / Excel, Print. New entries appear by themselves within about 10 seconds.
+- Like Database Settings and Permission Maintenance it can never be given to an Admin or Cashier.
+
 ### Validation
 - Names (people, products, companies, categories, discounts) are at most **100** characters; addresses 150;
   search and free-text boxes 100 (category description stays 255).

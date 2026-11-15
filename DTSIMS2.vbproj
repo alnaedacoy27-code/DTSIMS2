@@ -164,6 +164,8 @@
     <Compile Include="Modules\SettingsData.vb" />
     <Compile Include="Modules\BackupService.vb" />
     <Compile Include="Modules\SchemaUpgrade.vb" />
+    <Compile Include="Modules\AuditData.vb" />
+    <Compile Include="Forms\SystemUtilities\AuditTrailForm.vb" />
     <Compile Include="Forms\Reports\ReportFormBase.vb" />
     <Compile Include="Forms\Reports\SalesReportForm.vb" />
     <Compile Include="Forms\Reports\InventoryReportForm.vb" />
