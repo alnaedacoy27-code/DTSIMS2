@@ -88,6 +88,13 @@ Public Class AuthShellForm
         Message.Text = text
     End Sub
 
+    Protected Overrides Sub OnHandleCreated(e As EventArgs)
+        MyBase.OnHandleCreated(e)
+        WindowStyle.ApplyMaroonTitleBar(Me)
+    End Sub
+
+    Private Shared _mark As Bitmap
+
     Private Sub OnBrandPaint(sender As Object, e As PaintEventArgs)
         Dim g As Graphics = e.Graphics
         g.SmoothingMode = SmoothingMode.AntiAlias
@@ -98,6 +105,18 @@ Public Class AuthShellForm
         Using b2 As New SolidBrush(Color.FromArgb(20, 255, 255, 255))
             g.FillEllipse(b2, 150, -130, 300, 300)
         End Using
+
+        ' the DT mark above the name, on a white ring so it stands out from the maroon panel
+        If _mark Is Nothing Then _mark = AppIcon.Picture(96)
+        If _mark IsNot Nothing Then
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic
+            Using ring As GraphicsPath = Theme.RoundedRect(New Rectangle(38, 90, 84, 84), 20)
+                Using b As New SolidBrush(Color.FromArgb(45, 255, 255, 255))
+                    g.FillPath(b, ring)
+                End Using
+            End Using
+            g.DrawImage(_mark, New Rectangle(44, 96, 72, 72))
+        End If
 
         TextRenderer.DrawText(g, "DARWIN", Theme.FontBrand, New Rectangle(40, 190, 290, 56), Color.White,
                               TextFormatFlags.Left Or TextFormatFlags.NoPadding)

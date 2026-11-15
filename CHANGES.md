@@ -31,6 +31,26 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
 - Saved at once; every laptop updates its menu within seconds (and leaves a screen it may no longer open).
 - If the tables cannot be read, the built-in defaults apply, so nobody is locked out.
 
+### DT icon
+- New `DT icon.ico`: a white DT monogram on the app's maroon (the same colors as `Theme`), drawn separately for every
+  size from 16 to 256 px so it stays sharp in the title bar and taskbar. It is the exe icon and is embedded
+  (`DTSIMS2.AppIcon.ico`) so every window shows it. The old `DT logo.ico` / `dtsims logo.ico` are no longer used.
+- The login, setup and connection screens now get the maroon title bar too, and show the DT mark above the name.
+
+### Home > Menu / Dashboard
+- A switch at the top right of the home screen; the choice is remembered on each computer.
+- Dashboard, row 1 (selling): sales today (vs yesterday), transactions and average sale, items sold, sales this month
+  (vs the same days last month), gross profit this month (% of sales), given away this month (discounts, special
+  prices, points).
+- Row 2 (operations): low / out of stock, stock value at cost, deliveries received this month (and their cost),
+  draft deliveries not yet added to stock, stock losses this month (damaged / lost, from `loss_records`),
+  loyalty customers and the points they hold.
+- Sales and gross profit for the last 7 days, the top 5 products, who is online; then recent sales, products to
+  restock, recent deliveries, and recent discounts and losses, each with an Open link.
+- Each part only shows when the person may open the matching module; a Cashier sees only their own sales and never
+  costs or profit.
+  It loads in the background and refreshes when sales, stock or deliveries change, and every minute.
+
 ### Utilities > Audit Trail (Superadmin only)
 - A read-only record of every action: who did what, on which screen, on which computer, and when.
 - Views: *Activity log* (every entry, searchable), *Summary* (actions by type and per day), *By person*.

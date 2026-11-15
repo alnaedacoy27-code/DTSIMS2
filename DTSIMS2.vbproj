@@ -64,7 +64,7 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>dtsims logo.ico</ApplicationIcon>
+    <ApplicationIcon>DT icon.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
@@ -111,6 +111,8 @@
     <Compile Include="Controls\HomeView.vb">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Controls\DashboardView.vb" />
+    <Compile Include="Modules\DashboardData.vb" />
     <Compile Include="Controls\MarqueePanel.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -225,8 +227,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="DT logo.ico" />
-    <Content Include="dtsims logo.ico" />
+    <EmbeddedResource Include="DT icon.ico">
+      <LogicalName>DTSIMS2.AppIcon.ico</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
