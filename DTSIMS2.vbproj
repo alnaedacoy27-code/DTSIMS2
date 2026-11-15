@@ -173,15 +173,9 @@
     <Compile Include="Forms\Reports\ReceiptCopyDialog.vb" />
     <Compile Include="Forms\Settings\TextSizeForm.vb" />
     <Compile Include="Forms\Settings\VatForm.vb" />
-    <Compile Include="Forms\Settings\DatabaseDialogs.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\DatabaseSettingsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\Settings\PermissionsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Forms\Settings\DatabaseDialogs.vb" />
+    <Compile Include="Forms\Settings\DatabaseSettingsForm.vb" />
+    <Compile Include="Forms\Settings\PermissionsForm.vb" />
     <Compile Include="Forms\Settings\DiscountDialogs.vb" />
     <Compile Include="Forms\Settings\DiscountsForm.vb" />
     <Compile Include="Modules\PosData.vb" />
