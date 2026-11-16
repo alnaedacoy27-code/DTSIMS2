@@ -51,6 +51,15 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
   costs or profit.
   It loads in the background and refreshes when sales, stock or deliveries change, and every minute.
 
+### "?" on every figure
+- Every figure tile on the Dashboard, the reports (Sales, Inventory, Delivery, Loss, Duty Records, Audit Trail),
+  Inventory, User Monitoring, Users, Products, Suppliers, Customer Accounts, Discounts and the POS has a small "?".
+  Clicking it shows how the number is calculated and where it comes from.
+- All the wording is in `Modules/FigureHelp.vb` (one place to edit). A tile whose caption is not listed there has no "?".
+
+### Menu
+- Customer Accounts and Discounts moved to File Maintenance (their permissions are unchanged).
+
 ### Utilities > Audit Trail (Superadmin only)
 - A read-only record of every action: who did what, on which screen, on which computer, and when.
 - Views: *Activity log* (every entry, searchable), *Summary* (actions by type and per day), *By person*.

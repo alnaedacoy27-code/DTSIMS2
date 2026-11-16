@@ -148,6 +148,7 @@ Public Class UsersForm
         _stats.Padding = New Padding(Theme.S(32), Theme.S(4), 0, 0)
 
         For Each c As StatCard In New StatCard() {_cardSuper, _cardAdmin, _cardCashier, _cardOnline, _cardLocked}
+            c.HelpArea = "Users"
             c.Margin = New Padding(0, 0, Theme.S(14), 0)
             _stats.Controls.Add(c)
         Next

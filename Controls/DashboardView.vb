@@ -36,6 +36,47 @@ Public Class DashCard
         Invalidate()
     End Sub
 
+    ''' <summary>Where FigureHelp finds this card's explanation ("Dashboard"); a "?" shows when it has one.</summary>
+    Public Property HelpArea As String = ""
+    Private _hoverHelp As Boolean
+
+    Private Function Explanation() As FigureExplanation
+        Return FigureHelp.Find(HelpArea, Caption)
+    End Function
+
+    ' bottom-right, beside the short note: the captions use the whole top line
+    Private ReadOnly Property BadgeTop As Integer
+        Get
+            Return Theme.S(54)
+        End Get
+    End Property
+
+    Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+        MyBase.OnMouseMove(e)
+        Dim over As Boolean = HelpBadge.Hit(Width, e.Location, BadgeTop) AndAlso Explanation() IsNot Nothing
+        If over <> _hoverHelp Then
+            _hoverHelp = over
+            Cursor = If(over, Cursors.Hand, Cursors.Default)
+            Invalidate()
+        End If
+    End Sub
+
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        If _hoverHelp Then
+            _hoverHelp = False
+            Cursor = Cursors.Default
+            Invalidate()
+        End If
+    End Sub
+
+    Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
+        MyBase.OnMouseClick(e)
+        If e.Button <> MouseButtons.Left OrElse Not HelpBadge.Hit(Width, e.Location, BadgeTop) Then Return
+        Dim x As FigureExplanation = Explanation()
+        If x IsNot Nothing Then HelpBadge.Open(Me, Caption, Value & If(Note.Length > 0, "   (" & Note & ")", ""), x, BadgeTop)
+    End Sub
+
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g As Graphics = e.Graphics
         g.SmoothingMode = SmoothingMode.AntiAlias
@@ -56,11 +97,13 @@ Public Class DashCard
         End Using
         Dim x As Integer = Theme.S(16)
         Dim w As Integer = Width - x - Theme.S(8)
+        Dim hasHelp As Boolean = Explanation() IsNot Nothing
         Dim flags As TextFormatFlags = TextFormatFlags.Left Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix
         TextRenderer.DrawText(g, Caption.ToUpperInvariant(), Theme.FontCaption, New Rectangle(x, Theme.S(8), w, Theme.S(18)), Theme.TextMuted, flags)
+        If hasHelp Then HelpBadge.Paint(g, Width, _hoverHelp, BadgeTop)
         TextRenderer.DrawText(g, Value, ValueFont, New Rectangle(x, Theme.S(25), w, Theme.S(30)),
                               If(Warn, Theme.AlertRed, Theme.TextDark), flags)
-        TextRenderer.DrawText(g, Note, NoteFont, New Rectangle(x, Theme.S(55), w, Theme.S(18)), NoteColor, flags)
+        TextRenderer.DrawText(g, Note, NoteFont, New Rectangle(x, Theme.S(55), w - If(hasHelp, Theme.S(22), 0), Theme.S(18)), NoteColor, flags)
     End Sub
 End Class
 
@@ -275,6 +318,7 @@ Public Class DashboardView
     Private Function AddCard(caption As String) As DashCard
         Dim c As New DashCard()
         c.Caption = caption
+        c.HelpArea = "Dashboard"
         _cards.Add(c)
         Controls.Add(c)
         Return c
@@ -331,7 +375,7 @@ Public Class DashboardView
         If m.ShowGiven Then
             Dim share As Decimal = If(m.SalesMonth + m.GivenMonth = 0D, 0D, Math.Round(m.GivenMonth / (m.SalesMonth + m.GivenMonth) * 100D, 1))
             AddCard("Given away, month").SetValues(ReportFormat.Peso(m.GivenMonth),
-                If(m.GivenMonth = 0D, "No discounts given", share.ToString("0.0", Inv) & "% in discounts / points"), Theme.TextMuted)
+                If(m.GivenMonth = 0D, "No discounts given", share.ToString("0.0", Inv) & "% of full price"), Theme.TextMuted)
         End If
         Dim firstRow As Integer = _cards.Count
 
@@ -354,7 +398,7 @@ Public Class DashboardView
         End If
         If m.ShowStockLosses Then
             AddCard("Stock losses, month").SetValues(ReportFormat.Whole(m.StockLossQty),
-                If(m.StockLossCount = 0, "Nothing damaged or lost",
+                If(m.StockLossCount = 0, "Nothing lost",
                    If(m.ShowCosts, ReportFormat.Peso(m.StockLossValue) & " at cost", m.StockLossCount & " records")),
                 If(m.StockLossCount = 0, Green, Theme.AlertRed), m.StockLossCount > 0)
         End If

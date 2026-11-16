@@ -6,7 +6,7 @@ Imports System.Drawing
 Imports System.Windows.Forms
 
 ''' <summary>
-''' Settings > Discounts. A name and a percentage; actions: add, edit, activate / deactivate, delete.
+''' File Maintenance > Discounts. A name and a percentage; actions: add, edit, activate / deactivate, delete.
 ''' Only active discounts can be picked at the POS. Superadmin only.
 ''' </summary>
 <System.ComponentModel.DesignerCategory("Code")>
@@ -130,6 +130,7 @@ Public Class DiscountsForm
         _stats.Padding = New Padding(Theme.S(32), Theme.S(4), 0, 0)
 
         For Each c As StatCard In New StatCard() {_cardTotal, _cardActive}
+            c.HelpArea = "Discounts"
             c.Margin = New Padding(0, 0, Theme.S(14), 0)
             _stats.Controls.Add(c)
         Next

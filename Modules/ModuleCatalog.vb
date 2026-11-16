@@ -33,6 +33,8 @@ Public Module ModuleCatalog
         l.Add(New ModuleInfo("users", "File Maintenance", "Users", "Add, edit and remove users and their roles", Keys.Alt Or Keys.U))
         l.Add(New ModuleInfo("suppliers", "File Maintenance", "Suppliers", "Suppliers, companies and branches", Keys.Alt Or Keys.S))
         l.Add(New ModuleInfo("products", "File Maintenance", "Products", "Products, sizes, barcodes and categories", Keys.Alt Or Keys.P))
+        l.Add(New ModuleInfo("customers", "File Maintenance", "Customer Accounts", "Loyalty cards and points"))
+        l.Add(New ModuleInfo("discounts", "File Maintenance", "Discounts", "Discount names and percentages"))
 
         l.Add(New ModuleInfo("inventory", "Reports", "Inventory", "Current stock and low-stock warnings", Keys.Alt Or Keys.I))
         l.Add(New ModuleInfo("inventory_report", "Reports", "Inventory Report", "Stock in and stock out records"))
@@ -42,11 +44,9 @@ Public Module ModuleCatalog
         l.Add(New ModuleInfo("user_monitoring", "Reports", "User Monitoring", "Who is logged in now, and duty records (DTR)", Keys.Alt Or Keys.M))
 
         l.Add(New ModuleInfo("pos", "Transactions", "POS", "Point of sale: ring up customers", Keys.F2))
-        l.Add(New ModuleInfo("customers", "Transactions", "Customer Accounts", "Loyalty cards and points"))
         l.Add(New ModuleInfo("delivery", "Transactions", "Delivery Management", "Receive supplier deliveries into inventory", Keys.Alt Or Keys.D))
 
         l.Add(New ModuleInfo("vat", "Settings", "VAT", "VAT name and percentage"))
-        l.Add(New ModuleInfo("discounts", "Settings", "Discounts", "Discount names and percentages"))
         l.Add(New ModuleInfo("stock_threshold", "Settings", "Stock Threshold", "Minimum stock warning levels"))
         l.Add(New ModuleInfo("database_settings", "Settings", "Database Settings", "Backup, restore, backup folder and system reset"))
         l.Add(New ModuleInfo("permissions", "Settings", "Permission Maintenance", "Which roles and users can open each module"))

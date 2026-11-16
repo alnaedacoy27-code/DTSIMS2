@@ -512,12 +512,16 @@ Public MustInherit Class ReportFormBase
 
         _subtitle.Text = doc.PeriodLabel & If(doc.Note.Length > 0, "   |   " & doc.Note, "")
 
-        ' status figures
+        ' status figures ("?" explanations are looked up by report, e.g. "Sales Report - Categories" -> "Sales Report")
+        Dim area As String = doc.Title
+        Dim dash As Integer = area.IndexOf(" - ", StringComparison.Ordinal)
+        If dash > 0 Then area = area.Substring(0, dash)
         For i As Integer = 0 To _cards.Count - 1
             If i < doc.Kpis.Count Then
                 _cards(i).Value = doc.Kpis(i).Value
                 _cards(i).Caption = doc.Kpis(i).Caption
                 _cards(i).Warn = doc.Kpis(i).Warn
+                _cards(i).HelpArea = area
                 _cards(i).Visible = True
             Else
                 _cards(i).Visible = False

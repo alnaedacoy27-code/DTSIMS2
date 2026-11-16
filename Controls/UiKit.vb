@@ -258,6 +258,67 @@ Public Class StatCard
         End Set
     End Property
 
+    Private _helpArea As String = ""
+    Private _hoverHelp As Boolean
+
+    ''' <summary>
+    ''' The screen or report this card is on (e.g. "Sales Report", "Users"). When FigureHelp has an explanation
+    ''' for this area and caption, a small "?" shows in the corner; clicking it explains the number.
+    ''' </summary>
+    Public Property HelpArea As String
+        Get
+            Return _helpArea
+        End Get
+        Set(v As String)
+            _helpArea = If(v, "")
+            Invalidate()
+        End Set
+    End Property
+
+    Private Function Explanation() As FigureExplanation
+        Return FigureHelp.Find(_helpArea, _caption)
+    End Function
+
+    ''' <summary>Where the "?" is drawn (and can be clicked).</summary>
+    Private Function HelpRect() As Rectangle
+        Dim d As Integer = Theme.S(18)
+        Return New Rectangle(Width - d - Theme.S(9), Theme.S(8), d, d)
+    End Function
+
+    Private Function OverHelp(p As Point) As Boolean
+        Dim r As Rectangle = HelpRect()
+        r.Inflate(Theme.S(5), Theme.S(5))
+        Return r.Contains(p) AndAlso Explanation() IsNot Nothing
+    End Function
+
+    Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+        MyBase.OnMouseMove(e)
+        Dim over As Boolean = OverHelp(e.Location)
+        If over <> _hoverHelp Then
+            _hoverHelp = over
+            Cursor = If(over, Cursors.Hand, Cursors.Default)
+            Invalidate(HelpRect())
+        End If
+    End Sub
+
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        If _hoverHelp Then
+            _hoverHelp = False
+            Cursor = Cursors.Default
+            Invalidate()
+        End If
+    End Sub
+
+    Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
+        MyBase.OnMouseClick(e)
+        If e.Button <> MouseButtons.Left OrElse Not OverHelp(e.Location) Then Return
+        Dim x As FigureExplanation = Explanation()
+        If x Is Nothing Then Return
+        Dim r As Rectangle = HelpRect()
+        FigureHelpPopup.ShowFor(Me, New Point(r.Right, r.Bottom + Theme.S(4)), _caption, _value, x)
+    End Sub
+
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g As Graphics = e.Graphics
         g.SmoothingMode = SmoothingMode.AntiAlias
@@ -273,13 +334,167 @@ Public Class StatCard
             End Using
         End Using
 
-        TextRenderer.DrawText(g, _value, ValueFont, New Rectangle(16, 8, Width - 24, 36),
+        Dim hasHelp As Boolean = Explanation() IsNot Nothing
+        Dim textW As Integer = Width - 24 - If(hasHelp, Theme.S(24), 0)
+        TextRenderer.DrawText(g, _value, ValueFont, New Rectangle(16, 8, textW, 36),
                               If(_warn, Theme.AlertRed, Theme.Maroon),
-                              TextFormatFlags.Left Or TextFormatFlags.NoPadding)
+                              TextFormatFlags.Left Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         TextRenderer.DrawText(g, _caption, Theme.FontSmall, New Rectangle(16, 44, Width - 24, 22),
-                              Theme.TextMuted, TextFormatFlags.Left Or TextFormatFlags.NoPadding)
+                              Theme.TextMuted, TextFormatFlags.Left Or TextFormatFlags.NoPadding Or TextFormatFlags.NoPrefix)
+
+        If hasHelp Then
+            Dim h As Rectangle = HelpRect()
+            Dim accent As Color = If(_hoverHelp, Theme.Maroon, Color.FromArgb(170, 170, 170))
+            If _hoverHelp Then
+                Using b As New SolidBrush(Theme.MaroonTint)
+                    g.FillEllipse(b, h)
+                End Using
+            End If
+            Using p As New Pen(accent, 1.3F)
+                g.DrawEllipse(p, h)
+            End Using
+            TextRenderer.DrawText(g, "?", Theme.FontCaption, h, accent,
+                                  TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        End If
     End Sub
 End Class
+
+''' <summary>The small "?" in the top-right corner of a figure tile (StatCard, DashCard): where it is, drawing it, clicking it.</summary>
+Public Module HelpBadge
+
+    ''' <param name="top">-1 = the top-right corner; otherwise the y of the circle (DashCard puts it beside its note).</param>
+    Public Function RectFor(tileWidth As Integer, Optional top As Integer = -1) As Rectangle
+        Dim d As Integer = Theme.S(18)
+        Return New Rectangle(tileWidth - d - Theme.S(9), If(top < 0, Theme.S(8), top), d, d)
+    End Function
+
+    ''' <summary>A slightly bigger area than the circle, so it is easy to hit.</summary>
+    Public Function Hit(tileWidth As Integer, p As Point, Optional top As Integer = -1) As Boolean
+        Dim r As Rectangle = RectFor(tileWidth, top)
+        r.Inflate(Theme.S(5), Theme.S(5))
+        Return r.Contains(p)
+    End Function
+
+    Public Sub Paint(g As Graphics, tileWidth As Integer, hover As Boolean, Optional top As Integer = -1)
+        Dim h As Rectangle = RectFor(tileWidth, top)
+        Dim accent As Color = If(hover, Theme.Maroon, Color.FromArgb(170, 170, 170))
+        g.SmoothingMode = SmoothingMode.AntiAlias
+        If hover Then
+            Using b As New SolidBrush(Theme.MaroonTint)
+                g.FillEllipse(b, h)
+            End Using
+        End If
+        Using p As New Pen(accent, 1.3F)
+            g.DrawEllipse(p, h)
+        End Using
+        TextRenderer.DrawText(g, "?", Theme.FontCaption, h, accent,
+                              TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+    End Sub
+
+    ''' <summary>Opens the explanation under the "?" of this tile.</summary>
+    Public Sub Open(tile As Control, caption As String, value As String, x As FigureExplanation, Optional top As Integer = -1)
+        Dim r As Rectangle = RectFor(tile.Width, top)
+        FigureHelpPopup.ShowFor(tile, New Point(r.Right, r.Bottom + Theme.S(4)), caption, value, x)
+    End Sub
+
+End Module
+
+''' <summary>The little window a "?" on a figure opens: what the number means, how it is worked out, where it comes from.</summary>
+Public Module FigureHelpPopup
+
+    Private _open As ToolStripDropDown
+
+    Public Sub ShowFor(card As Control, anchorTopRight As Point, caption As String, value As String, x As FigureExplanation)
+        If _open IsNot Nothing Then
+            _open.Close()
+            _open = Nothing
+        End If
+
+        Dim panel As Panel = BuildPanel(caption, value, x)
+        Dim w As Integer = panel.Width
+
+        Dim host As New ToolStripControlHost(panel)
+        host.Margin = Padding.Empty
+        host.Padding = Padding.Empty
+        host.AutoSize = False
+        host.Size = panel.Size
+
+        Dim dd As New ToolStripDropDown()
+        dd.Padding = Padding.Empty
+        dd.Margin = Padding.Empty
+        dd.DropShadowEnabled = True
+        dd.Items.Add(host)
+        AddHandler dd.Closed, Sub(s, e) If ReferenceEquals(_open, dd) Then _open = Nothing
+        _open = dd
+
+        ' right edge under the "?", kept on screen
+        Dim screenPt As Point = card.PointToScreen(anchorTopRight)
+        Dim area As Rectangle = Screen.FromControl(card).WorkingArea
+        Dim left As Integer = Math.Max(area.Left + 4, Math.Min(screenPt.X - w, area.Right - w - 4))
+        Dim top As Integer = screenPt.Y
+        If top + panel.Height > area.Bottom - 4 Then top = Math.Max(area.Top + 4, card.PointToScreen(Point.Empty).Y - panel.Height - 4)
+        dd.Show(New Point(left, top))
+    End Sub
+
+    ''' <summary>The contents of the popup: title, the number shown now, how it is calculated, where it comes from.</summary>
+    Public Function BuildPanel(caption As String, value As String, x As FigureExplanation) As Panel
+        Dim w As Integer = Theme.S(380)
+        Dim pad As Integer = Theme.S(16)
+        Dim panel As New Panel()
+        panel.BackColor = Color.White
+        panel.Width = w
+
+        Dim y As Integer = pad
+        Dim title As Label = MakeLabel(caption, Theme.FontHeading, Theme.Maroon, w - 2 * pad)
+        title.Location = New Point(pad, y)
+        panel.Controls.Add(title)
+        y = title.Bottom + Theme.S(2)
+
+        If Not String.IsNullOrEmpty(value) Then
+            Dim v As Label = MakeLabel("Now showing: " & value, Theme.FontSmall, Theme.TextMuted, w - 2 * pad)
+            v.Location = New Point(pad, y)
+            panel.Controls.Add(v)
+            y = v.Bottom + Theme.S(10)
+        End If
+
+        y = AddSection(panel, "HOW IT IS CALCULATED", x.How, pad, y, w)
+        If Not String.IsNullOrEmpty(x.Source) Then y = AddSection(panel, "WHERE THE NUMBERS COME FROM", x.Source, pad, y + Theme.S(8), w)
+        panel.Height = y + pad
+        AddHandler panel.Paint,
+            Sub(s As Object, e As PaintEventArgs)
+                Using pen As New Pen(Theme.Maroon, 2.0F)
+                    e.Graphics.DrawLine(pen, 0, 1, panel.Width, 1)
+                End Using
+                Using pen As New Pen(Theme.BorderColor, 1.0F)
+                    e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1)
+                End Using
+            End Sub
+        Return panel
+    End Function
+
+    Private Function AddSection(panel As Panel, heading As String, body As String, pad As Integer, y As Integer, w As Integer) As Integer
+        Dim h As Label = MakeLabel(heading, Theme.FontCaption, Theme.TextMuted, w - 2 * pad)
+        h.Location = New Point(pad, y)
+        panel.Controls.Add(h)
+        Dim b As Label = MakeLabel(body, Theme.FontBase, Theme.TextDark, w - 2 * pad)
+        b.Location = New Point(pad, h.Bottom + Theme.S(3))
+        panel.Controls.Add(b)
+        Return b.Bottom
+    End Function
+
+    Private Function MakeLabel(text As String, f As Font, c As Color, maxW As Integer) As Label
+        Dim l As New Label()
+        l.AutoSize = True
+        l.MaximumSize = New Size(maxW, 0)
+        l.UseMnemonic = False
+        l.Font = f
+        l.ForeColor = c
+        l.BackColor = Color.White
+        l.Text = text
+        Return l
+    End Function
+
+End Module
 
 ''' <summary>Rounded search box with a magnifier and placeholder text. Raises SearchChanged after typing pauses.</summary>
 Public Class SearchBox

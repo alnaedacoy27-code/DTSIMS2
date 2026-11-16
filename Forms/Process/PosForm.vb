@@ -259,6 +259,8 @@ Public Class PosForm
         _cardCount.Size = New Size(190, 64)
         _cardCount.Location = New Point(20, 10)
         _cardCount.Caption = "My transactions (24 h)"
+        _cardCount.HelpArea = "POS"
+        _cardAmount.HelpArea = "POS"
         _cardAmount.Size = New Size(Theme.S(260), Theme.S(64))
         _cardAmount.Location = New Point(Theme.S(20) + Theme.S(190) + Theme.S(14), Theme.S(10))
         _cardAmount.Caption = "My total sales (24 h)"

@@ -200,6 +200,7 @@ Public Class UserMonitoringForm
         _stats.Padding = New Padding(Theme.S(32), Theme.S(4), 0, 0)
 
         For Each c As StatCard In New StatCard() {_cardActive, _cardPcs, _cardAdmins, _cardCashiers}
+            c.HelpArea = "User Monitoring"
             c.Margin = New Padding(0, 0, Theme.S(14), 0)
             _stats.Controls.Add(c)
         Next

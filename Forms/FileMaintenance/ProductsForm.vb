@@ -160,6 +160,7 @@ Public Class ProductsForm
         _stats.Padding = New Padding(Theme.S(32), Theme.S(4), 0, 0)
 
         For Each c As StatCard In New StatCard() {_cardNames, _cardItems, _cardCats}
+            c.HelpArea = "Products"
             c.Margin = New Padding(0, 0, Theme.S(14), 0)
             _stats.Controls.Add(c)
         Next
