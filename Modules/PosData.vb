@@ -413,7 +413,8 @@ Public Module PosRepository
                     Dim payName As String = "Cash"
                     Dim payRef As Object = DBNull.Value
                     If req.PaymentMethodId > 0 AndAlso cashDue > 0D Then
-                        Dim pm As DataTable = Rows(conn, tx, "SELECT name, kind, needs_reference, is_active FROM payment_methods WHERE id = @i", "@i", req.PaymentMethodId)
+                        Dim pm As DataTable = Rows(conn, tx, "SELECT name, kind, needs_reference, is_active, ref_digits_only, ref_min_len, ref_max_len " &
+                                                   "FROM payment_methods WHERE id = @i", "@i", req.PaymentMethodId)
                         If pm.Rows.Count = 0 OrElse Convert.ToInt32(pm.Rows(0)("is_active")) = 0 Then
                             Return Reject(tx, SaleResult.Invalid, "This payment method is no longer available. Choose another one.")
                         End If
@@ -425,7 +426,8 @@ Public Module PosRepository
                             End If
                             Dim ref As String = If(req.PaymentReference, "").Trim()
                             If Convert.ToInt32(pm.Rows(0)("needs_reference")) <> 0 OrElse ref.Length > 0 Then
-                                Dim problem As String = PaymentRepository.ReferenceProblem(ref)
+                                ' this method's own rule (e.g. GCash: 13 numbers), checked here too, not only on the screen
+                                Dim problem As String = PaymentRepository.ReferenceProblem(ref, payName, PaymentRepository.RuleOf(pm.Rows(0)))
                                 If problem.Length > 0 Then Return Reject(tx, SaleResult.Invalid, problem)
                                 Dim usedOn As Object = Scalar(conn, tx,
                                     "SELECT receipt_no FROM sales WHERE payment_method_id = @m AND payment_reference = @r LIMIT 1",

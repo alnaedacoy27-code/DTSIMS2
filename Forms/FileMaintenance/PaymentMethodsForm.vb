@@ -312,7 +312,8 @@ Public Class PaymentMethodsForm
                                           New Rectangle(c.X + Theme.S(12), c.Y + Theme.S(33), c.Width - Theme.S(20), Theme.S(18)), Theme.TextMuted, flags)
                 End If
             Case "reference"
-                Dim t As String = If(isCash, "-", If(Convert.ToInt32(row("needs_reference")) <> 0, "Required", "Optional"))
+                Dim t As String = If(isCash, "-", PaymentRepository.RuleOf(row.Row).Text &
+                                     If(Convert.ToInt32(row("needs_reference")) <> 0, "", " (optional)"))
                 TextRenderer.DrawText(e.Graphics, t, Theme.FontBase, New Rectangle(c.X + Theme.S(12), c.Y, c.Width - Theme.S(16), c.Height), fore,
                                       flags Or TextFormatFlags.VerticalCenter)
             Case "status"
@@ -365,7 +366,8 @@ Public Class PaymentMethodsForm
         _vAccount.Text = If(isCash, "-", If(acc.Length > 0, acc, "Not set"))
         _vNumber.Text = If(isCash, "-", If(num.Length > 0, num, "Not set"))
         _vRef.Text = If(isCash, "Not needed for cash",
-                        If(Convert.ToInt32(row("needs_reference")) <> 0, "Required: the cashier types it from the customer's confirmation", "Optional"))
+                        PaymentRepository.RuleOf(row.Row).Text & If(Convert.ToInt32(row("needs_reference")) <> 0,
+                            ", required (from the customer's confirmation)", ", optional"))
         Dim used As Integer = Convert.ToInt32(row("used_count"))
         _vUsed.Text = used.ToString() & If(used = 1, " sale", " sales")
 

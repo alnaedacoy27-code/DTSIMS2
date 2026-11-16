@@ -35,6 +35,10 @@ Public Enum InputKind
     Measurement
     ' Barcode text: letters, numbers and dash (a scanner types it)
     Barcode
+    ''' <summary>Numbers only, any length up to MaxLength (e.g. a GCash reference number).</summary>
+    Digits
+    ''' <summary>Letters, numbers and dash, in capitals (e.g. a PayPal transaction ID).</summary>
+    Code
 End Enum
 
 ''' <summary>The rules behind InputKind. One place, so every form in the system behaves the same.</summary>
@@ -78,6 +82,8 @@ Public Module InputRules
                 Return 60
             Case InputKind.Barcode
                 Return 20
+            Case InputKind.Digits, InputKind.Code
+                Return 40
             Case Else
                 ' free text and search boxes (give a field more with .MaxLength when its column allows it)
                 Return 100
@@ -106,8 +112,10 @@ Public Module InputRules
                 Return Char.IsLetter(c) OrElse c = " "c OrElse c = "'"c OrElse c = "."c OrElse c = "-"c
             Case InputKind.Username
                 Return IsAsciiLetter(c) OrElse IsDigit(c) OrElse c = "."c OrElse c = "_"c OrElse c = "-"c
-            Case InputKind.MobilePH, InputKind.WholeNumber
+            Case InputKind.MobilePH, InputKind.WholeNumber, InputKind.Digits
                 Return IsDigit(c)
+            Case InputKind.Code
+                Return IsAsciiLetter(c) OrElse IsDigit(c) OrElse c = "-"c
             Case InputKind.Phone
                 Return IsDigit(c) OrElse c = "+"c OrElse c = " "c OrElse c = "-"c OrElse c = "("c OrElse c = ")"c
             Case InputKind.Email
@@ -384,7 +392,7 @@ Public Class InputField
             _text.Kind = v
             _text.MaxLength = InputRules.DefaultMaxLength(v)
             If v = InputKind.Password Then _text.UseSystemPasswordChar = True
-            _text.CharacterCasing = If(v = InputKind.Barcode, CharacterCasing.Upper, CharacterCasing.Normal)
+            _text.CharacterCasing = If(v = InputKind.Barcode OrElse v = InputKind.Code, CharacterCasing.Upper, CharacterCasing.Normal)
         End Set
     End Property
 

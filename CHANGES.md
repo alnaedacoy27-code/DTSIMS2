@@ -74,6 +74,10 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
   the QR code, account and amount; the cashier checks the customer's confirmation and types its reference number.
   A reference number cannot be used twice for the same method. Receipts print "Paid by GCash" and the reference; the Sales
   Report receipts list has a PAID WITH column.
+- Each payment method has its own reference number rule (schema version 9): numbers only or letters and numbers,
+  shortest and longest. The POS box only takes those characters, stops at the longest, and refuses a wrong length;
+  the sale is checked again when it is saved. Adding GCash fills in 13 numbers and PayPal 17 letters or numbers by
+  themselves; other services (Maya, banks) start at 4 to 40 letters or numbers: set them from one real confirmation.
 - The app does not take money from the customer's wallet by itself and cannot see the money arrive: that needs a
   verified merchant account with a payment provider (for example PayMongo or Maya Business) and its API keys.
 

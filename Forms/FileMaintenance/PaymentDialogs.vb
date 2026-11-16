@@ -16,6 +16,10 @@ Public Class PaymentMethodEditForm
     Private ReadOnly _accName As New InputField("Account name (as the customer sees it)", InputKind.Title, Theme.S(300), False)
     Private ReadOnly _accNumber As New InputField("Account / mobile number", InputKind.Text, Theme.S(200), False)
     Private ReadOnly _needsRef As New CheckBox()
+    Private ReadOnly _refKind As New ChoiceField("Reference number has", Theme.S(200))
+    Private ReadOnly _refMin As New InputField("Shortest", InputKind.WholeNumber, Theme.S(100), True)
+    Private ReadOnly _refMax As New InputField("Longest", InputKind.WholeNumber, Theme.S(100), True)
+    Private ReadOnly _suggest As New LinkLabel()
     Private ReadOnly _qr As New PictureBox()
     Private ReadOnly _qrNote As New Label()
     Private ReadOnly _choose As New LinkLabel()
@@ -23,20 +27,27 @@ Public Class PaymentMethodEditForm
     Private ReadOnly _save As New MaroonButton()
     Private ReadOnly _cancel As New MaroonButton()
 
+    Private Const NumbersOnly As String = "Numbers only"
+    Private Const LettersAndNumbers As String = "Letters and numbers"
+
     Private _qrBytes As Byte()
     Private _qrChanged As Boolean
     Private _qrCleared As Boolean
+    Private _ruleTouched As Boolean
+    Private _settingRule As Boolean
 
     Public Sub New()
-        MyBase.New("Add payment method", "A way customers can pay besides cash, with the shop's account and QR code.", Theme.S(760), Theme.S(520))
+        MyBase.New("Add payment method", "A way customers can pay besides cash, with the shop's account and QR code.", Theme.S(760), Theme.S(560))
         _id = 0
         Build()
         _kind.Value = "E-wallet"
         _needsRef.Checked = True
+        ShowRule(New RefRule())
+        _ruleTouched = False
     End Sub
 
     Public Sub New(id As Integer)
-        MyBase.New("Edit payment method", "Change the account, the QR code or the reference rule.", Theme.S(760), Theme.S(520))
+        MyBase.New("Edit payment method", "Change the account, the QR code or the reference rule.", Theme.S(760), Theme.S(560))
         _id = id
         Build()
         Dim row As DataRow = Nothing
@@ -56,7 +67,58 @@ Public Class PaymentMethodEditForm
         _accName.Value = If(row("account_name") Is DBNull.Value, "", row("account_name").ToString())
         _accNumber.Value = If(row("account_number") Is DBNull.Value, "", row("account_number").ToString())
         _needsRef.Checked = Convert.ToInt32(row("needs_reference")) <> 0
+        ShowRule(PaymentRepository.RuleOf(row))
+        _ruleTouched = True             ' a saved rule is never replaced by a suggestion on its own
+        UpdateSuggestion()
         ShowQr()
+    End Sub
+
+    ' ------------------------------------------------------------------ reference number rule
+    Private Sub ShowRule(rule As RefRule)
+        _settingRule = True
+        _refKind.Value = If(rule.DigitsOnly, NumbersOnly, LettersAndNumbers)
+        _refMin.Value = rule.MinLength.ToString()
+        _refMax.Value = rule.MaxLength.ToString()
+        _settingRule = False
+    End Sub
+
+    ''' <summary>The rule typed in the dialog, or Nothing when a length is not a number.</summary>
+    Private Function ReadRule() As RefRule
+        Dim mn, mx As Integer
+        If Not Integer.TryParse(_refMin.Value.Trim(), mn) OrElse Not Integer.TryParse(_refMax.Value.Trim(), mx) Then Return Nothing
+        Return New RefRule(_refKind.Value = NumbersOnly, mn, mx)
+    End Function
+
+    Private Sub OnRuleEdited()
+        If _settingRule Then Return
+        _ruleTouched = True
+        UpdateSuggestion()
+    End Sub
+
+    ''' <summary>
+    ''' A new GCash / PayPal method gets its usual format by itself (until the person changes it);
+    ''' otherwise a link offers it when the fields differ.
+    ''' </summary>
+    Private Sub UpdateSuggestion()
+        Dim s As RefRule = PaymentRepository.SuggestedRule(_name.Value)
+        If s Is Nothing Then
+            _suggest.Visible = False
+            Return
+        End If
+        If _id = 0 AndAlso Not _ruleTouched Then ShowRule(s)
+        Dim cur As RefRule = ReadRule()
+        Dim same As Boolean = cur IsNot Nothing AndAlso cur.DigitsOnly = s.DigitsOnly AndAlso cur.MinLength = s.MinLength AndAlso cur.MaxLength = s.MaxLength
+        _suggest.Text = If(same, "This is the usual " & _name.Value.Trim() & " format: " & s.Text & ".",
+                           "Use the usual " & _name.Value.Trim() & " format: " & s.Text)
+        _suggest.Enabled = Not same
+        _suggest.Visible = True
+    End Sub
+
+    Private Sub OnSuggest(sender As Object, e As LinkLabelLinkClickedEventArgs)
+        Dim s As RefRule = PaymentRepository.SuggestedRule(_name.Value)
+        If s Is Nothing Then Return
+        ShowRule(s)
+        UpdateSuggestion()
     End Sub
 
     Private Sub Build()
@@ -83,12 +145,39 @@ Public Class PaymentMethodEditForm
 
         Dim hint As New Label()
         hint.AutoSize = False
-        hint.Size = New Size(Theme.S(500), Theme.S(60))
+        hint.Size = New Size(Theme.S(500), Theme.S(46))
         hint.Location = New Point(x + Theme.S(20), Theme.S(290))
         hint.Font = Theme.FontSmall
         hint.ForeColor = Theme.TextMuted
-        hint.Text = "Recommended. The cashier copies it from the customer's confirmation screen (GCash: Ref No., Maya: Reference ID). " &
-                    "It is saved with the sale and printed on the receipt, and the same reference cannot be used twice."
+        hint.Text = "Recommended. Copied from the customer's confirmation (GCash: Ref No., Maya: Reference ID). " &
+                    "Printed on the receipt; never accepted twice."
+
+        ' what a correct reference number looks like: the POS refuses anything else
+        _refKind.Location = New Point(x, Theme.S(340))
+        _refKind.SetChoices(New String() {NumbersOnly, LettersAndNumbers})
+        AddHandler _refKind.ValueChanged, AddressOf OnRuleEdited
+        _refMin.Location = New Point(x + Theme.S(216), Theme.S(340))
+        _refMin.MinNumber = 1D
+        _refMin.MaxNumber = RefRule.Longest
+        _refMin.MaxLength = 2
+        AddHandler _refMin.ValueChanged, AddressOf OnRuleEdited
+        _refMax.Location = New Point(x + Theme.S(332), Theme.S(340))
+        _refMax.MinNumber = 1D
+        _refMax.MaxNumber = RefRule.Longest
+        _refMax.MaxLength = 2
+        AddHandler _refMax.ValueChanged, AddressOf OnRuleEdited
+        Dim lenNote As New Label()
+        lenNote.AutoSize = False
+        lenNote.Size = New Size(Theme.S(70), Theme.S(40))
+        lenNote.Location = New Point(x + Theme.S(442), Theme.S(366))
+        lenNote.Font = Theme.FontSmall
+        lenNote.ForeColor = Theme.TextMuted
+        lenNote.Text = "characters"
+        lenNote.TextAlign = ContentAlignment.MiddleLeft
+        StyleLink(_suggest, "", New Point(x, Theme.S(410)))
+        _suggest.Visible = False
+        AddHandler _suggest.LinkClicked, AddressOf OnSuggest
+        AddHandler _name.ValueChanged, Sub() UpdateSuggestion()
 
         ' QR code on the right
         _qr.Location = New Point(Theme.S(560), Theme.S(108))
@@ -109,22 +198,23 @@ Public Class PaymentMethodEditForm
         StyleLink(_remove, "Remove", New Point(Theme.S(560), Theme.S(352)))
         AddHandler _remove.LinkClicked, AddressOf OnRemove
 
-        Message.Location = New Point(x, Theme.S(380))
-        Message.Size = New Size(Theme.S(680), Theme.S(34))
+        Message.Location = New Point(x, Theme.S(436))
+        Message.Size = New Size(Theme.S(680), Theme.S(30))
 
         _cancel.Text = "Cancel"
         _cancel.MakeSecondary()
         _cancel.Size = New Size(Theme.S(130), Theme.S(44))
-        _cancel.Location = New Point(Theme.S(720) - Theme.S(130) - Theme.S(10) - Theme.S(170), Theme.S(420))
+        _cancel.Location = New Point(Theme.S(720) - Theme.S(130) - Theme.S(10) - Theme.S(170), Theme.S(470))
         AddHandler _cancel.Click, Sub(s, e) DialogResult = DialogResult.Cancel
 
         _save.Text = If(_id = 0, "Add method", "Save changes")
         _save.Size = New Size(Theme.S(170), Theme.S(44))
-        _save.Location = New Point(Theme.S(720) - Theme.S(170), Theme.S(420))
+        _save.Location = New Point(Theme.S(720) - Theme.S(170), Theme.S(470))
         AddHandler _save.Click, AddressOf OnSave
 
-        Controls.AddRange(New Control() {_name, _kind, _accName, _accNumber, _needsRef, hint, _qr, _qrNote, _choose, _remove, _cancel, _save})
-        ClientSize = New Size(Theme.S(760), Theme.S(420) + Theme.S(44) + Theme.S(26))
+        Controls.AddRange(New Control() {_name, _kind, _accName, _accNumber, _needsRef, hint, _refKind, _refMin, _refMax, lenNote, _suggest,
+                                         _qr, _qrNote, _choose, _remove, _cancel, _save})
+        ClientSize = New Size(Theme.S(760), Theme.S(470) + Theme.S(44) + Theme.S(26))
         AcceptButton = _save
         CancelButton = _cancel
         ShowQr()
@@ -182,8 +272,11 @@ Public Class PaymentMethodEditForm
 
     Private Sub OnSave(sender As Object, e As EventArgs)
         ShowMessage("", False)
-        Dim problem As String = InputField.CheckAll(_name, _accName, _accNumber)
+        Dim problem As String = InputField.CheckAll(_name, _accName, _accNumber, _refMin, _refMax)
         If problem.Length = 0 Then problem = PaymentRepository.AccountNumberProblem(_accNumber.Value)
+        Dim rule As RefRule = ReadRule()
+        If problem.Length = 0 AndAlso rule Is Nothing Then problem = "Type the shortest and longest reference length as numbers."
+        If problem.Length = 0 Then problem = rule.Problem()
         If problem.Length = 0 AndAlso String.Equals(_name.Value.Trim(), "Cash", StringComparison.OrdinalIgnoreCase) Then
             problem = "Cash already exists and is always available."
         End If
@@ -196,11 +289,11 @@ Public Class PaymentMethodEditForm
         Cursor = Cursors.WaitCursor
         Try
             Dim r As SaveResult = PaymentRepository.Save(_id, _name.Value, PaymentRepository.KindFromText(_kind.Value), _accName.Value, _accNumber.Value,
-                                                         _needsRef.Checked, If(_qrChanged, _qrBytes, Nothing), _qrCleared)
+                                                         _needsRef.Checked, rule, If(_qrChanged, _qrBytes, Nothing), _qrCleared)
             Select Case r
                 Case SaveResult.Ok
                     AuditLog.Write(If(_id = 0, "ADD", "EDIT"), "Payment Methods",
-                                   If(_id = 0, "Added", "Edited") & " payment method '" & _name.Value.Trim() & "'" &
+                                   If(_id = 0, "Added", "Edited") & " payment method '" & _name.Value.Trim() & "' (reference: " & rule.Text & ")" &
                                    If(_qrChanged, " (new QR code)", If(_qrCleared, " (QR code removed)", "")))
                     DialogResult = DialogResult.OK
                 Case SaveResult.Duplicate
@@ -295,9 +388,11 @@ Public Class PaymentConfirmDialog
         End If
 
         _ref.Location = New Point(rx, Math.Max(y + Theme.S(4), Theme.S(260)))
-        _ref.MaxLength = 40
+        ' only the characters this method's reference has, and never longer than it
+        _ref.Kind = If(method.Rule.DigitsOnly, InputKind.Digits, InputKind.Code)
+        _ref.MaxLength = method.Rule.MaxLength
         _ref.Required = method.NeedsReference
-        _ref.Caption = If(method.NeedsReference, "Reference no. (on the confirmation)", "Reference no. (optional)")
+        _ref.Caption = "Reference no. (" & method.Rule.Text & If(method.NeedsReference, ")", ", optional)")
         Controls.Add(_ref)
 
         Dim check As New Label()
@@ -352,7 +447,7 @@ Public Class PaymentConfirmDialog
     Private Sub OnOk(sender As Object, e As EventArgs)
         Dim ref As String = _ref.Value.Trim()
         If _method.NeedsReference OrElse ref.Length > 0 Then
-            Dim problem As String = PaymentRepository.ReferenceProblem(ref)
+            Dim problem As String = PaymentRepository.ReferenceProblem(ref, _method.Name, _method.Rule)
             If problem.Length > 0 Then
                 ShowMessage(problem, True)
                 _ref.FocusInput()

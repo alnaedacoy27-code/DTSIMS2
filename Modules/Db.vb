@@ -16,7 +16,7 @@ End Enum
 Public Module Db
 
     ''' <summary>The schema_version this build of the app expects.</summary>
-    Public Const RequiredSchemaVersion As Integer = 8
+    Public Const RequiredSchemaVersion As Integer = 9
 
     Private _settings As New ConnectionSettings()
 
@@ -122,7 +122,7 @@ Public Module Db
                             v = SchemaUpgrade.Apply(conn, v)
                         Catch ex As Exception
                             message = "The database needs an update the app could not make: " & ex.Message &
-                                      " Run the scripts 07 and 08 in the Database folder in MySQL Workbench."
+                                      " Run the scripts 07, 08 and 09 in the Database folder in MySQL Workbench."
                             Return DbStatus.SchemaOutdated
                         End Try
                     End If

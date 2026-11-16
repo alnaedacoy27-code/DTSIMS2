@@ -20,8 +20,20 @@ Public Module SchemaUpgrade
             UpgradeTo8(conn)
             v = 8
         End If
+        If v = 8 Then
+            UpgradeTo9(conn)
+            v = 9
+        End If
         Return v
     End Function
+
+    ' 9: each payment method's reference number rule (numbers only or letters and numbers, shortest and longest)
+    Private Sub UpgradeTo9(conn As MySqlConnection)
+        AddColumnIfMissing(conn, "payment_methods", "ref_digits_only", "tinyint(1) NOT NULL DEFAULT '0'")
+        AddColumnIfMissing(conn, "payment_methods", "ref_min_len", "int NOT NULL DEFAULT '4'")
+        AddColumnIfMissing(conn, "payment_methods", "ref_max_len", "int NOT NULL DEFAULT '40'")
+        Exec(conn, "INSERT IGNORE INTO schema_version (version, description) VALUES (9, 'Reference number rule per payment method')")
+    End Sub
 
     ' 8: one computer per account (why a session ended), payment methods, and how each sale was paid
     Private Sub UpgradeTo8(conn As MySqlConnection)
