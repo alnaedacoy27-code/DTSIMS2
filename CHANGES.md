@@ -51,6 +51,14 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
   costs or profit.
   It loads in the background and refreshes when sales, stock or deliveries change, and every minute.
 
+### Dashboard refresh
+- The dashboard reloads within about a second when anything it shows changes, on any laptop: sales, stock, deliveries,
+  suppliers, categories, loyalty customers and points, discounts, settings, users, and log-ins / log-outs
+  (before, new customers, points, settings and "Online now" waited for the one-minute timer or never showed).
+- Logging in and out now tells the other laptops at once ("Online now", User Monitoring).
+- The safety-net refresh runs every 30 seconds (was 60). "Updated" shows the seconds; a refresh that fails shows
+  "Could not update ... - retrying" in red instead of quietly keeping the old figures.
+
 ### Live calculations under the "?" (schema version 8)
 - Report and dashboard figures now show the formula with the real numbers of the period, in a few lines. Example, Profit:
   `Profit = Total sales - cost of the items sold`, then each item `4 x P40.00 = P160.00 (sold at P60.00)`, the total cost,

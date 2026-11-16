@@ -38,6 +38,19 @@ Public Module SessionTracker
         Catch
             ' the other computer still finds out at its next 15-second check
         End Try
+        SignalSessionsChanged()
+    End Sub
+
+    ''' <summary>
+    ''' user_sessions has no trigger: tell the other laptops that someone logged in or out,
+    ''' so "Online now" on the dashboard and User Monitoring update within a second.
+    ''' </summary>
+    Private Sub SignalSessionsChanged()
+        Try
+            Db.NonQuery("INSERT INTO change_log (module) VALUES ('user_sessions')")
+        Catch
+            ' ignore: they still see it at their next one-minute refresh
+        End Try
     End Sub
 
     ' ------------------------------------------------------------------ one computer per account
@@ -72,9 +85,7 @@ Public Module SessionTracker
             "logout_at = COALESCE(logout_at, IF(last_seen >= DATE_SUB(NOW(), INTERVAL 30 SECOND), NOW(), last_seen)) " &
             "WHERE user_id = @u AND session_id <> @s AND end_reason IS NULL AND (is_active = 1 OR logout_at IS NULL)",
             Db.Params("@r", OtherLoginReason & "|" & Left(Environment.MachineName, 80), "@u", AppSession.UserId, "@s", sid))
-        If n > 0 Then
-            Db.NonQuery("INSERT INTO change_log (module) VALUES ('user_sessions')")
-        End If
+        ' (StartSession signals the change for the other laptops afterwards)
     End Sub
 
     ''' <summary>
@@ -152,6 +163,7 @@ Public Module SessionTracker
             Db.NonQuery("UPDATE user_sessions SET is_active = 0, logout_at = NOW() WHERE session_id = @s AND end_reason IS NULL",
                         Db.Params("@s", sid))
             AuditLog.Write("LOGOUT", "Login", "'" & AppSession.Username & "' logged out")
+            SignalSessionsChanged()
         Catch
             ' ignore
         End Try

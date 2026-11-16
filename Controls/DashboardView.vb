@@ -136,6 +136,8 @@ Public Class DashboardView
 
     ''' <summary>When the figures were read (shown next to the switch).</summary>
     Public Event Loaded(at As DateTime)
+    ''' <summary>A refresh failed (database busy or offline): the figures shown are the last ones that loaded.</summary>
+    Public Event LoadFailed(message As String)
 
     Public Sub New()
         Dock = DockStyle.Fill
@@ -291,6 +293,8 @@ Public Class DashboardView
                 _message.Text = "The dashboard could not be loaded: " & errorText
                 _message.Visible = True
             End If
+            ' do not keep old figures quietly: say so (the home screen retries)
+            RaiseEvent LoadFailed(errorText)
         Else
             _model = m
             Build()

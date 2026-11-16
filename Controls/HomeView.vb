@@ -54,7 +54,7 @@ Public Class HomeView
         _updated.TextAlign = ContentAlignment.MiddleRight
         _updated.Font = Theme.FontSmall
         _updated.ForeColor = Theme.TextMuted
-        _updated.Size = New Size(Theme.S(200), Theme.S(20))
+        _updated.Size = New Size(Theme.S(320), Theme.S(20))
 
         _header.Controls.AddRange(New Control() {_hello, _subtitle, _switch, _updated})
         AddHandler _header.Resize, Sub(s, e) PlaceSwitch()
@@ -118,8 +118,9 @@ Public Class HomeView
         Controls.Add(_host)
         Controls.Add(_header)
 
-        ' the figures also change with time (who is online, "today"): read them again every minute
-        _timer.Interval = 60000
+        ' changes arrive within a second through the live engine; this is the safety net
+        ' (the date rolling over to "today", a refresh that failed): read them again every 30 seconds
+        _timer.Interval = 30000
         AddHandler _timer.Tick, Sub(s, e) If _dash IsNot Nothing AndAlso _dash.Visible Then _dash.RefreshData()
 
         _switch.SelectedIndex = If(String.Equals(LocalDevices.GetValue(ViewSetting), "dashboard", StringComparison.OrdinalIgnoreCase), 1, 0)
@@ -148,7 +149,18 @@ Public Class HomeView
             If _dash Is Nothing Then
                 _dash = New DashboardView()
                 AddHandler _dash.OpenRequested, AddressOf OnOpenRequested
-                AddHandler _dash.Loaded, Sub(at As DateTime) _updated.Text = "Updated " & at.ToString("h:mm tt")
+                AddHandler _dash.Loaded,
+                    Sub(at As DateTime)
+                        _updated.ForeColor = Theme.TextMuted
+                        _updated.Text = "Updated " & at.ToString("h:mm:ss tt")
+                        PlaceSwitch()
+                    End Sub
+                AddHandler _dash.LoadFailed,
+                    Sub(message As String)
+                        _updated.ForeColor = Theme.AlertRed
+                        _updated.Text = "Could not update at " & DateTime.Now.ToString("h:mm:ss tt") & " - retrying"
+                        PlaceSwitch()
+                    End Sub
                 Controls.Add(_dash)
                 _dash.BringToFront()
             Else
@@ -185,9 +197,11 @@ Public Class HomeView
     End Sub
 
     ' ==================================================================== live updates (from the main window)
+    ''' <summary>Every table a dashboard figure or list is read from: a change in any of them reloads the dashboard.</summary>
     Public ReadOnly Property WatchedTables As String() Implements ILiveForm.WatchedTables
         Get
-            Return New String() {"sales", "sale_items", "products", "deliveries", "users"}
+            Return New String() {"sales", "sale_items", "products", "categories", "deliveries", "delivery_items", "suppliers",
+                                 "customers", "points_ledger", "discounts", "settings", "users", "user_sessions"}
         End Get
     End Property
 
