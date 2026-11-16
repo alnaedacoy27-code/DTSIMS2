@@ -35,6 +35,7 @@ Public Module ModuleCatalog
         l.Add(New ModuleInfo("products", "File Maintenance", "Products", "Products, sizes, barcodes and categories", Keys.Alt Or Keys.P))
         l.Add(New ModuleInfo("customers", "File Maintenance", "Customer Accounts", "Loyalty cards and points"))
         l.Add(New ModuleInfo("discounts", "File Maintenance", "Discounts", "Discount names and percentages"))
+        l.Add(New ModuleInfo("payment_methods", "File Maintenance", "Payment Methods", "Cash, GCash, Maya, bank transfer: accounts and QR codes"))
 
         l.Add(New ModuleInfo("inventory", "Reports", "Inventory", "Current stock and low-stock warnings", Keys.Alt Or Keys.I))
         l.Add(New ModuleInfo("inventory_report", "Reports", "Inventory Report", "Stock in and stock out records"))

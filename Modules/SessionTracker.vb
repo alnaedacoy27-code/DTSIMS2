@@ -1,6 +1,7 @@
 Option Strict On
 Option Explicit On
 
+Imports System.Collections.Generic
 Imports System.Net
 Imports System.Net.Sockets
 Imports System.Threading
@@ -30,15 +31,85 @@ Public Module SessionTracker
                           "@d", Environment.MachineName, "@ip", LocalIp()))
         Catch
             _sessionId = ""
+            Return
+        End Try
+        Try
+            EndOtherSessions(_sessionId)
+        Catch
+            ' the other computer still finds out at its next 15-second check
         End Try
     End Sub
+
+    ' ------------------------------------------------------------------ one computer per account
+    ''' <summary>Written in end_reason when a session was closed because the same account logged in elsewhere.</summary>
+    Public Const OtherLoginReason As String = "other_login"
+
+    ''' <summary>
+    ''' Computers where this account is logged in right now (fresh heartbeat, not ended).
+    ''' Asked before a log-in finishes: one account works on one computer at a time.
+    ''' </summary>
+    Public Function LiveDevicesOf(userId As Integer) As List(Of String)
+        Dim result As New List(Of String)()
+        Dim dt As System.Data.DataTable = Db.Table(
+            "SELECT DISTINCT COALESCE(device_name, '') AS d FROM user_sessions " &
+            "WHERE user_id = @u AND is_active = 1 AND end_reason IS NULL " &
+            "AND last_seen >= DATE_SUB(NOW(), INTERVAL 30 SECOND)",
+            Db.Params("@u", userId))
+        For Each r As System.Data.DataRow In dt.Rows
+            result.Add(r("d").ToString())
+        Next
+        Return result
+    End Function
+
+    ''' <summary>
+    ''' After this computer's session started: every other open session of the same account is ended
+    ''' (those computers notice within about a second and go back to the login screen).
+    ''' A session that was already silent keeps its last report as its log-out time, so duty records stay right.
+    ''' </summary>
+    Private Sub EndOtherSessions(sid As String)
+        Dim n As Integer = Db.NonQuery(
+            "UPDATE user_sessions SET is_active = 0, end_reason = @r, " &
+            "logout_at = COALESCE(logout_at, IF(last_seen >= DATE_SUB(NOW(), INTERVAL 30 SECOND), NOW(), last_seen)) " &
+            "WHERE user_id = @u AND session_id <> @s AND end_reason IS NULL AND (is_active = 1 OR logout_at IS NULL)",
+            Db.Params("@r", OtherLoginReason & "|" & Left(Environment.MachineName, 80), "@u", AppSession.UserId, "@s", sid))
+        If n > 0 Then
+            Db.NonQuery("INSERT INTO change_log (module) VALUES ('user_sessions')")
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Was this computer's session ended because the account logged in somewhere else? Returns that computer's name,
+    ''' or Nothing. Checked by the live engine.
+    ''' </summary>
+    Public Function EndedByOtherLogin() As String
+        Dim sid As String = _sessionId
+        If sid.Length = 0 Then Return Nothing
+        Dim o As Object = Db.Scalar("SELECT end_reason FROM user_sessions WHERE session_id = @s", Db.Params("@s", sid))
+        If o Is Nothing OrElse o Is DBNull.Value Then Return Nothing
+        Dim reason As String = o.ToString()
+        If Not reason.StartsWith(OtherLoginReason, StringComparison.Ordinal) Then Return Nothing
+        Dim bar As Integer = reason.IndexOf("|"c)
+        Return If(bar >= 0, reason.Substring(bar + 1), "another computer")
+    End Function
+
+    ''' <summary>Forget this computer's session without writing anything (it was ended from another computer).</summary>
+    Public Sub Abandon()
+        _sessionId = ""
+    End Sub
+
+    Private Function Left(s As String, n As Integer) As String
+        If s Is Nothing OrElse s.Length <= n Then Return s
+        Return s.Substring(0, n)
+    End Function
 
     ''' <summary>Called every few seconds from the live engine (background thread).</summary>
     Public Sub Heartbeat()
         Dim sid As String = _sessionId
         If sid.Length = 0 Then Return
         Try
-            Db.NonQuery("UPDATE user_sessions SET last_seen = NOW(), is_active = 1 WHERE session_id = @s", Db.Params("@s", sid))
+            ' a session ended by a log-in elsewhere stays ended
+            Db.NonQuery("UPDATE user_sessions SET last_seen = NOW(), is_active = 1 WHERE session_id = @s AND end_reason IS NULL",
+                        Db.Params("@s", sid))
         Catch
             ' ignore
         End Try
@@ -78,7 +149,8 @@ Public Module SessionTracker
         _sessionId = ""
         If sid.Length = 0 Then Return
         Try
-            Db.NonQuery("UPDATE user_sessions SET is_active = 0, logout_at = NOW() WHERE session_id = @s", Db.Params("@s", sid))
+            Db.NonQuery("UPDATE user_sessions SET is_active = 0, logout_at = NOW() WHERE session_id = @s AND end_reason IS NULL",
+                        Db.Params("@s", sid))
             AuditLog.Write("LOGOUT", "Login", "'" & AppSession.Username & "' logged out")
         Catch
             ' ignore

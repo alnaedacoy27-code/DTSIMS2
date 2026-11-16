@@ -24,7 +24,8 @@ Public Module Permissions
     Public ReadOnly EditableRoles As String() = {"admin", "cashier"}
 
     ' factory defaults
-    Private ReadOnly AdminDenied As String() = {"vat", "discounts", "stock_threshold", "database_settings", "user_monitoring", "permissions", "audit_trail"}
+    Private ReadOnly AdminDenied As String() = {"vat", "discounts", "stock_threshold", "database_settings", "user_monitoring", "permissions", "audit_trail",
+                                                "payment_methods"}
     Private ReadOnly CashierAllowed As String() = {"pos", "sales_report", "text_size"}
 
     Private ReadOnly _lock As New Object()

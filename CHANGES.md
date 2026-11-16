@@ -51,6 +51,32 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
   costs or profit.
   It loads in the background and refreshes when sales, stock or deliveries change, and every minute.
 
+### Live calculations under the "?" (schema version 8)
+- Report and dashboard figures now show the formula with the real numbers of the period, in a few lines. Example, Profit:
+  `Profit = Total sales - cost of the items sold`, then each item `4 x P40.00 = P160.00 (sold at P60.00)`, the total cost,
+  `P280.00 regular prices - P272.00 special prices = P8.00`, `Profit = P8.00 - P176.00 = -P168.00`, and why it is below 0.
+  Long lists show the 6 biggest lines and "+ N more: P...".
+- Covered: Sales (total, transactions, items, average, profit, discounts, largest sale, categories), Inventory (net change),
+  Delivery (total cost, expected profit), Loss (total given up, share with a concession, below cost), Duty Records
+  (total time, average), Dashboard (sales today / month, average, gross profit and margin, given away, stock, points).
+
+### One computer per account
+- Logging in while the same account is logged in on another computer (or window) asks first:
+  "Already logged in on PC-2 ... it will be logged off there". Continuing logs the other computer off within about
+  a second, with a message saying where the account logged in. Choosing No keeps the other session.
+- Logging out or closing the Superadmin's app does not log anyone else off. Only deleting the Superadmin account does
+  (every app then asks for a new Superadmin), and the database computer being off makes the others wait for it.
+
+### File Maintenance > Payment Methods
+- Cash (always there) plus any e-wallet or bank the shop accepts (GCash, Maya, PayPal, MariBank, BPI ...): name, type,
+  account name and number, the shop's QR code picture, and whether a reference number is required.
+- POS: "Paid with" on the payment screen. For a non-cash method the amount is exact (no change); "Continue to GCash" shows
+  the QR code, account and amount; the cashier checks the customer's confirmation and types its reference number.
+  A reference number cannot be used twice for the same method. Receipts print "Paid by GCash" and the reference; the Sales
+  Report receipts list has a PAID WITH column.
+- The app does not take money from the customer's wallet by itself and cannot see the money arrive: that needs a
+  verified merchant account with a payment provider (for example PayMongo or Maya Business) and its API keys.
+
 ### "?" on every figure
 - Every figure tile on the Dashboard, the reports (Sales, Inventory, Delivery, Loss, Duty Records, Audit Trail),
   Inventory, User Monitoring, Users, Products, Suppliers, Customer Accounts, Discounts and the POS has a small "?".

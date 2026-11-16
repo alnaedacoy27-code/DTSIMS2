@@ -322,6 +322,8 @@ Public Class MainMenuForm
                 Return New PermissionsForm()
             Case "audit_trail"
                 Return New AuditTrailForm()
+            Case "payment_methods"
+                Return New PaymentMethodsForm()
             Case Else
                 Return New PlaceholderForm(info.Title, info.Description)
         End Select
@@ -434,6 +436,21 @@ Public Class MainMenuForm
                 MessageBox.Show(Me,
                     "Your account " & why & "." & Environment.NewLine & "You will be logged out.",
                     "Account changed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                LoggedOut = True
+                Close()
+
+            Case LiveSecurityEvent.LoggedInElsewhere
+                CloseOwnedForms()
+                AuditLog.Write("LOGOUT", "Login", "'" & AppSession.Username & "' was logged off: the account logged in on " & detail)
+                SessionTracker.Abandon()       ' that session was already ended by the other computer
+                Dim where As String = If(String.Equals(detail, Environment.MachineName, StringComparison.OrdinalIgnoreCase),
+                                         "another window on this computer", detail)
+                MessageBox.Show(Me,
+                    "Your account was just logged in on " & where & "." & Environment.NewLine &
+                    "One account can only be used on one computer at a time, so you have been logged off here." &
+                    Environment.NewLine & Environment.NewLine &
+                    "If that was not you, log in again and ask the Superadmin to change your password.",
+                    "Logged in on another computer", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 LoggedOut = True
                 Close()
 

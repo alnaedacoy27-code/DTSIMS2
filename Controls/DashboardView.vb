@@ -38,6 +38,8 @@ Public Class DashCard
 
     ''' <summary>Where FigureHelp finds this card's explanation ("Dashboard"); a "?" shows when it has one.</summary>
     Public Property HelpArea As String = ""
+    ''' <summary>The formula with today's / this month's real numbers, shown under the "?".</summary>
+    Public Property Calculation As String = ""
     Private _hoverHelp As Boolean
 
     Private Function Explanation() As FigureExplanation
@@ -74,7 +76,7 @@ Public Class DashCard
         MyBase.OnMouseClick(e)
         If e.Button <> MouseButtons.Left OrElse Not HelpBadge.Hit(Width, e.Location, BadgeTop) Then Return
         Dim x As FigureExplanation = Explanation()
-        If x IsNot Nothing Then HelpBadge.Open(Me, Caption, Value & If(Note.Length > 0, "   (" & Note & ")", ""), x, BadgeTop)
+        If x IsNot Nothing Then HelpBadge.Open(Me, Caption, Value & If(Note.Length > 0, "   (" & Note & ")", ""), x, BadgeTop, Calculation)
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
@@ -405,6 +407,7 @@ Public Class DashboardView
             AddCard("Online now").SetValues(ReportFormat.Whole(m.OnlineCount), If(m.OnlineCount = 1, "person logged in", "people logged in"), Theme.TextMuted)
         End If
         _firstRow = firstRow
+        AttachCalculations(m)
 
         ' ---- charts (and who is online beside them)
         _online = Nothing
@@ -454,6 +457,51 @@ Public Class DashboardView
 
     Private _firstRow As Integer
     Private _online As Panel
+
+    ''' <summary>The formula with today's / this month's numbers behind each card's "?".</summary>
+    Private Sub AttachCalculations(m As DashboardModel)
+        Dim setCalc As Action(Of String, String) =
+            Sub(caption As String, text As String)
+                For Each c As DashCard In _cards
+                    If c.Caption = caption Then c.Calculation = text
+                Next
+            End Sub
+
+        Dim avg As Decimal = If(m.CountToday = 0, 0D, Math.Round(m.SalesToday / m.CountToday, 2))
+        Dim today As String = ReportCalc.Lines(
+            "Sales today = receipt totals since midnight",
+            ReportCalc.Count(m.CountToday, "receipt", "receipts") & ": " & ReportCalc.P(m.SalesToday),
+            "Yesterday (whole day): " & ReportCalc.P(m.SalesYesterday) & If(m.SalesYesterday > 0D,
+                ", change = (" & ReportCalc.P(m.SalesToday) & " - " & ReportCalc.P(m.SalesYesterday) & ") / " & ReportCalc.P(m.SalesYesterday) &
+                " x 100 = " & ReportCalc.Pct(m.SalesToday - m.SalesYesterday, m.SalesYesterday), ""))
+        setCalc("Sales today", today)
+        setCalc("My sales today", today)
+        setCalc("Transactions", ReportCalc.Lines(
+            "Average = Sales today / Transactions",
+            ReportCalc.P(m.SalesToday) & " / " & ReportCalc.N(m.CountToday) & " = " & ReportCalc.P(avg)))
+        Dim month As String = ReportCalc.Lines(
+            "Sales this month = receipt totals since the 1st",
+            ReportCalc.P(m.SalesMonth) & " vs " & ReportCalc.P(m.SalesLastMonthSoFar) & " last month up to the same day" &
+            If(m.SalesLastMonthSoFar > 0D, " = " & ReportCalc.Pct(m.SalesMonth - m.SalesLastMonthSoFar, m.SalesLastMonthSoFar) & " change", ""))
+        setCalc("Sales this month", month)
+        setCalc("My sales this month", month)
+
+        Dim cost As Decimal = m.SalesMonth - m.ProfitMonth
+        setCalc("Gross profit, month", ReportCalc.Lines(
+            "Gross profit = sales - cost of the items sold",
+            ReportCalc.P(m.SalesMonth) & " - " & ReportCalc.P(cost) & " = " & ReportCalc.P(m.ProfitMonth),
+            "Margin = " & ReportCalc.P(m.ProfitMonth) & " / " & ReportCalc.P(m.SalesMonth) & " x 100 = " & ReportCalc.Pct(m.ProfitMonth, m.SalesMonth)))
+        setCalc("Given away, month", ReportCalc.Lines(
+            "Share = given away / (sales + given away) x 100",
+            ReportCalc.P(m.GivenMonth) & " / (" & ReportCalc.P(m.SalesMonth) & " + " & ReportCalc.P(m.GivenMonth) & ") x 100 = " &
+            ReportCalc.Pct(m.GivenMonth, m.SalesMonth + m.GivenMonth)))
+        setCalc("Low / out of stock", ReportCalc.Lines(
+            "Low / out of stock = low + out of stock",
+            ReportCalc.N(m.LowCount) & " low + " & ReportCalc.N(m.OutCount) & " out = " & ReportCalc.N(m.LowCount + m.OutCount)))
+        setCalc("Loyalty customers", ReportCalc.Lines(
+            "Points worth = points held x value of 1 point",
+            ReportCalc.N(m.PointsOwed) & " x " & ReportCalc.P(m.PointsPesoValue) & " = " & ReportCalc.P(m.PointsOwed * m.PointsPesoValue)))
+    End Sub
 
     Private Function EmptyTop(m As DashboardModel) As ReportChart
         Dim c As New ReportChart()

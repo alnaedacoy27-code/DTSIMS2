@@ -79,6 +79,10 @@ Public Class SaleRequest
     Public Property CustomerId As Integer
     Public Property PointsMode As String = ""
     Public Property PointsToUse As Decimal
+    ''' <summary>0 = Cash. Otherwise a payment_methods row (GCash, Maya, a bank ...).</summary>
+    Public Property PaymentMethodId As Integer
+    ''' <summary>The reference number on the customer's payment confirmation (non-cash only).</summary>
+    Public Property PaymentReference As String = ""
 End Class
 
 Public Class SaleOutcome
@@ -165,6 +169,7 @@ Public Module PosRepository
             "SELECT s.id, s.receipt_no, s.created_at, s.cashier_name, s.subtotal, s.discount_name, s.discount_amount, " &
             "s.special_discount_amount, s.special_approved_name, s.vat_name, s.vat_percent, s.vat_amount, s.total, " &
             "s.amount_paid, s.change_amount, s.customer_name, s.points_used, s.points_value, s.points_earned, " &
+            "COALESCE(s.payment_method, '') AS payment_method, COALESCE(s.payment_reference, '') AS payment_reference, " &
             "COALESCE((SELECT l.balance_after FROM points_ledger l WHERE l.sale_id = s.id ORDER BY l.id DESC LIMIT 1), " &
             "(SELECT c.points_balance FROM customers c WHERE c.id = s.customer_id)) AS points_balance " &
             "FROM sales s WHERE s.id = @id", Db.Params("@id", saleId))
@@ -190,6 +195,8 @@ Public Module PosRepository
         m.Total = Convert.ToDecimal(r("total"))
         m.Paid = Convert.ToDecimal(r("amount_paid"))
         m.Change = Convert.ToDecimal(r("change_amount"))
+        m.PaymentMethod = r("payment_method").ToString()
+        m.PaymentReference = r("payment_reference").ToString()
         m.CustomerName = If(r("customer_name") Is DBNull.Value, "", r("customer_name").ToString())
         m.PointsUsed = Convert.ToDecimal(r("points_used"))
         m.PointsValue = Convert.ToDecimal(r("points_value"))
@@ -401,6 +408,37 @@ Public Module PosRepository
                     End If
                     Dim change As Decimal = req.AmountPaid - cashDue
 
+                    ' ---- how it was paid: cash, or a payment method checked on the customer's confirmation
+                    Dim payId As Object = DBNull.Value
+                    Dim payName As String = "Cash"
+                    Dim payRef As Object = DBNull.Value
+                    If req.PaymentMethodId > 0 AndAlso cashDue > 0D Then
+                        Dim pm As DataTable = Rows(conn, tx, "SELECT name, kind, needs_reference, is_active FROM payment_methods WHERE id = @i", "@i", req.PaymentMethodId)
+                        If pm.Rows.Count = 0 OrElse Convert.ToInt32(pm.Rows(0)("is_active")) = 0 Then
+                            Return Reject(tx, SaleResult.Invalid, "This payment method is no longer available. Choose another one.")
+                        End If
+                        payId = req.PaymentMethodId
+                        payName = pm.Rows(0)("name").ToString()
+                        If pm.Rows(0)("kind").ToString() <> "cash" Then
+                            If req.AmountPaid <> cashDue Then
+                                Return Reject(tx, SaleResult.Invalid, "A " & payName & " payment must be the exact amount, " & Currency.Format(cashDue) & ".")
+                            End If
+                            Dim ref As String = If(req.PaymentReference, "").Trim()
+                            If Convert.ToInt32(pm.Rows(0)("needs_reference")) <> 0 OrElse ref.Length > 0 Then
+                                Dim problem As String = PaymentRepository.ReferenceProblem(ref)
+                                If problem.Length > 0 Then Return Reject(tx, SaleResult.Invalid, problem)
+                                Dim usedOn As Object = Scalar(conn, tx,
+                                    "SELECT receipt_no FROM sales WHERE payment_method_id = @m AND payment_reference = @r LIMIT 1",
+                                    "@m", req.PaymentMethodId, "@r", ref)
+                                If usedOn IsNot Nothing AndAlso usedOn IsNot DBNull.Value Then
+                                    Return Reject(tx, SaleResult.Invalid, "This " & payName & " reference number was already used on receipt " & usedOn.ToString() &
+                                                  ". Check the customer's confirmation again.")
+                                End If
+                                payRef = ref
+                            End If
+                        End If
+                    End If
+
                     ' ---- the sale row (receipt numbers are per year: OR-2026-000001)
                     Dim saleId As Integer = 0
                     Dim receiptNo As String = ""
@@ -414,8 +452,11 @@ Public Module PosRepository
                             Using cmd As New MySqlCommand(
                                 "INSERT INTO sales (receipt_no, cashier_id, cashier_name, subtotal, discount_id, discount_name, discount_amount, " &
                                 "special_discount_amount, special_approved_by, special_approved_name, vat_name, vat_percent, vat_amount, total, amount_paid, change_amount, " &
-                                "customer_id, customer_name, points_used, points_value, points_earned) " &
-                                "VALUES (@r, @ci, @cn, @st, @di, @dn, @da, @sa, @ab, @an, @vn, @vp, @va, @t, @ap, @ch, @cu, @cun, @pu, @pv, @pe)", conn, tx)
+                                "customer_id, customer_name, points_used, points_value, points_earned, payment_method_id, payment_method, payment_reference) " &
+                                "VALUES (@r, @ci, @cn, @st, @di, @dn, @da, @sa, @ab, @an, @vn, @vp, @va, @t, @ap, @ch, @cu, @cun, @pu, @pv, @pe, @pmi, @pmn, @pmr)", conn, tx)
+                                cmd.Parameters.AddWithValue("@pmi", payId)
+                                cmd.Parameters.AddWithValue("@pmn", payName)
+                                cmd.Parameters.AddWithValue("@pmr", payRef)
                                 cmd.Parameters.AddWithValue("@r", receiptNo)
                                 cmd.Parameters.AddWithValue("@ci", If(req.CashierId > 0, CObj(req.CashierId), DBNull.Value))
                                 cmd.Parameters.AddWithValue("@cn", req.CashierName)

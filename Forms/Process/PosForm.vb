@@ -76,6 +76,10 @@ Public Class PosForm
     Private ReadOnly _lblPayMsg As New Label()
     Private ReadOnly _btnPayBack As New MaroonButton()
     Private ReadOnly _btnPayDone As New MaroonButton()
+    Private ReadOnly _lblPayWith As New Label()
+    Private ReadOnly _payMethod As New ComboBox()
+    Private _methods As New List(Of PaymentMethod)()
+    Private _lastPayText As String = ""
 
     Private ReadOnly _receiptPanel As New Panel()
     Private ReadOnly _lblRecChange As New Label()
@@ -595,6 +599,21 @@ Public Class PosForm
         _btnPayDone.Font = Theme.MakeFont("Segoe UI Semibold", 15.0F)
         AddHandler _btnPayDone.Click, AddressOf OnPayDone
 
+        ' how the customer pays: Cash, or GCash / Maya / a bank (File Maintenance > Payment Methods)
+        _lblPayWith.AutoSize = False
+        _lblPayWith.Font = Theme.FontCaption
+        _lblPayWith.ForeColor = Theme.TextMuted
+        _lblPayWith.TextAlign = ContentAlignment.MiddleLeft
+        _lblPayWith.Text = "PAID WITH"
+        _lblPayWith.Size = New Size(Theme.S(200), Theme.S(20))
+        _payMethod.DropDownStyle = ComboBoxStyle.DropDownList
+        _payMethod.FlatStyle = FlatStyle.Flat
+        _payMethod.Font = Theme.MakeFont("Segoe UI Semibold", 12.0F)
+        _payMethod.Width = Theme.S(200)
+        AddHandler _payMethod.SelectedIndexChanged, Sub(s, e) OnPayMethodChanged()
+        _payPanel.Controls.Add(_lblPayWith)
+        _payPanel.Controls.Add(_payMethod)
+
         _payPanel.Controls.Add(title)
         _payPanel.Controls.Add(totCap)
         _payPanel.Controls.Add(_lblPayTotal)
@@ -612,7 +631,9 @@ Public Class PosForm
         Dim h As Integer = _payPanel.ClientSize.Height
         If w <= 0 OrElse h <= 0 Then Return
 
-        _lblPayTotal.Width = w - Theme.S(40)
+        _lblPayWith.Location = New Point(w - Theme.S(20) - _payMethod.Width, Theme.S(62))
+        _payMethod.Location = New Point(w - Theme.S(20) - _payMethod.Width, Theme.S(86))
+        _lblPayTotal.Width = Math.Max(Theme.S(160), w - Theme.S(40) - If(_payMethod.Visible, _payMethod.Width + Theme.S(10), 0))
         _lblPayLoy.Width = Math.Max(Theme.S(120), w - Theme.S(170))
         _lblReceived.Width = w - Theme.S(40)
         _lblChange.Width = w - Theme.S(40)
@@ -1201,7 +1222,54 @@ Public Class PosForm
         Return Math.Max(0D, _totals.Total - PointsValueNow())
     End Function
 
+    ''' <summary>Cash first, then the active payment methods. Only Cash when they cannot be read.</summary>
+    Private Sub LoadPayMethods()
+        Try
+            _methods = PaymentRepository.GetActive()
+        Catch
+            _methods = New List(Of PaymentMethod)()
+        End Try
+        If _methods.Count = 0 OrElse Not _methods(0).IsCash Then
+            Dim cash As New PaymentMethod()
+            cash.Name = "Cash"
+            cash.Kind = "cash"
+            _methods.Insert(0, cash)
+        End If
+        _payMethod.Items.Clear()
+        For Each m As PaymentMethod In _methods
+            _payMethod.Items.Add(m)
+        Next
+        _payMethod.SelectedIndex = 0
+        ' with Cash only there is nothing to choose
+        _payMethod.Visible = (_methods.Count > 1)
+        _lblPayWith.Visible = _payMethod.Visible
+        LayoutPay()
+    End Sub
+
+    Private Function SelectedPayMethod() As PaymentMethod
+        Dim m As PaymentMethod = TryCast(_payMethod.SelectedItem, PaymentMethod)
+        If m Is Nothing AndAlso _methods.Count > 0 Then m = _methods(0)
+        Return m
+    End Function
+
+    ''' <summary>True when the customer pays with GCash / Maya / a bank: the exact amount, no change.</summary>
+    Private Function PayingNonCash() As Boolean
+        Dim m As PaymentMethod = SelectedPayMethod()
+        Return m IsNot Nothing AndAlso Not m.IsCash AndAlso CashDue() > 0D
+    End Function
+
+    Private Sub OnPayMethodChanged()
+        If PayingNonCash() Then
+            _received.SetValue(CashDue())
+        Else
+            _received.SetValue(0D)
+        End If
+        _lblPayMsg.Text = ""
+        UpdatePayDisplay()
+    End Sub
+
     Private Sub OpenPay()
+        LoadPayMethods()
         _received.SetValue(0D)
         _lblPayMsg.Text = ""
         UpdatePayDisplay()
@@ -1222,6 +1290,7 @@ Public Class PosForm
     End Sub
 
     Private Sub OnPayKey(key As String)
+        If PayingNonCash() Then Return          ' the exact amount is paid from the customer's app
         _received.Press(key)
         _lblPayMsg.Text = ""
         UpdatePayDisplay()
@@ -1229,7 +1298,7 @@ Public Class PosForm
 
     Private Sub OnQuickAmount(sender As Object, e As EventArgs)
         Dim b As Button = TryCast(sender, Button)
-        If b Is Nothing Then Return
+        If b Is Nothing OrElse PayingNonCash() Then Return
         Dim amount As Decimal = Convert.ToDecimal(b.Tag)
         If amount = 0D Then
             _received.SetValue(CashDue())
@@ -1259,7 +1328,24 @@ Public Class PosForm
             _lnkLoy.Text = "Change loyalty choice"
         End If
 
+        ' GCash / Maya / bank: always the exact amount; the number pad and the quick amounts do not apply
+        Dim nonCash As Boolean = PayingNonCash()
+        If nonCash AndAlso _received.Value <> due Then _received.SetValue(due)
+        _payMethod.Enabled = (due > 0D)
+        _padPay.Enabled = Not nonCash
+        For Each q As MaroonButton In _quick
+            q.Enabled = Not nonCash
+        Next
+        _lblReceived.Text = Currency.Peso & If(_received.Text.Length = 0, "0", _received.Text)
+        _btnPayDone.Text = If(nonCash, "Continue to " & SelectedPayMethod().Name, "Complete sale")
+
         Dim got As Decimal = _received.Value
+        If nonCash Then
+            _lblChange.ForeColor = Theme.TextMuted
+            _lblChange.Text = "Exact amount by " & SelectedPayMethod().Name & ", no change"
+            _btnPayDone.Enabled = (due > 0D AndAlso _totals.Total > 0D)
+            Return
+        End If
         If usingPoints AndAlso due <= 0D Then
             _lblChange.ForeColor = Color.FromArgb(22, 130, 60)
             _lblChange.Text = "Paid in full with points"
@@ -1302,6 +1388,19 @@ Public Class PosForm
         req.CashierId = AppSession.UserId
         req.CashierName = AppSession.FullName
 
+        ' how it is paid: a non-cash payment is confirmed (QR, account, reference number) before the sale is saved
+        Dim pay As PaymentMethod = SelectedPayMethod()
+        _lastPayText = ""
+        If pay IsNot Nothing Then req.PaymentMethodId = pay.Id
+        If PayingNonCash() Then
+            Using dlg As New PaymentConfirmDialog(pay, CashDue())
+                If dlg.ShowDialog(OwnerOf(Me)) <> DialogResult.OK Then Return
+                req.PaymentReference = dlg.Reference
+            End Using
+            req.AmountPaid = CashDue()
+            _lastPayText = ", paid by " & pay.Name & If(req.PaymentReference.Length > 0, " (ref " & req.PaymentReference & ")", "")
+        End If
+
         _btnPayDone.Enabled = False
         Cursor = Cursors.WaitCursor
         Dim outcome As SaleOutcome = Nothing
@@ -1335,7 +1434,7 @@ Public Class PosForm
         Dim approver As String = _approverName
         Dim total As Decimal = _totals.Total
 
-        AuditLog.Write("SALE", "POS", "Sale " & outcome.ReceiptNo & ": " & itemCount.ToString() & " item(s), total " & Currency.Format(total))
+        AuditLog.Write("SALE", "POS", "Sale " & outcome.ReceiptNo & ": " & itemCount.ToString() & " item(s), total " & Currency.Format(total) & _lastPayText)
         If special > 0D Then
             AuditLog.Write("SPECIAL_PRICE", "POS", "Special price on " & outcome.ReceiptNo & ": " & Currency.Format(special) &
                            " off, approved by " & approver & " (cashier " & AppSession.FullName & ")")
@@ -1367,7 +1466,9 @@ Public Class PosForm
 
         _paper.Model = _lastReceipt
         If _lastReceipt IsNot Nothing Then
-            _lblRecChange.Text = "Change  " & Currency.Format(_lastReceipt.Change)
+            Dim pm As String = _lastReceipt.PaymentMethod
+            _lblRecChange.Text = If(pm.Length = 0 OrElse String.Equals(pm, "Cash", StringComparison.OrdinalIgnoreCase),
+                                    "Change  " & Currency.Format(_lastReceipt.Change), "Paid by " & pm)
         Else
             _lblRecChange.Text = outcome.ReceiptNo
         End If

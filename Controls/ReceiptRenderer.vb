@@ -37,6 +37,9 @@ Public Class ReceiptModel
     Public Property Total As Decimal
     Public Property Paid As Decimal
     Public Property Change As Decimal
+    ''' <summary>"Cash", "GCash", "Maya" ... ("" on sales made before payment methods existed = cash).</summary>
+    Public Property PaymentMethod As String = ""
+    Public Property PaymentReference As String = ""
     Public Property CustomerName As String = ""
     Public Property PointsUsed As Decimal
     Public Property PointsValue As Decimal
@@ -161,8 +164,13 @@ Public Module ReceiptRenderer
             p.Gap(2)
             p.Row("TOTAL", Num(m.Total), p.Big)
             If m.PointsValue > 0D Then p.Row("Points (" & Loyalty.Fmt(m.PointsUsed) & " pts)", "-" & Num(m.PointsValue), p.Normal)
-            p.Row("Cash", Num(m.Paid), p.Normal)
-            p.Row("Change", Num(m.Change), p.Normal)
+            If m.PaymentMethod.Length = 0 OrElse String.Equals(m.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase) Then
+                p.Row("Cash", Num(m.Paid), p.Normal)
+                p.Row("Change", Num(m.Change), p.Normal)
+            Else
+                p.Row("Paid by " & m.PaymentMethod, Num(m.Paid), p.Normal)
+                If m.PaymentReference.Length > 0 Then p.Row("Reference no.", m.PaymentReference, p.Normal)
+            End If
             p.Rule()
 
             If m.CustomerName.Length > 0 Then

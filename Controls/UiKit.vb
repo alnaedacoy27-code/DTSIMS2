@@ -261,6 +261,9 @@ Public Class StatCard
     Private _helpArea As String = ""
     Private _hoverHelp As Boolean
 
+    ''' <summary>The formula with the real numbers behind this figure (reports fill it in); shown under the "?".</summary>
+    Public Property Calculation As String = ""
+
     ''' <summary>
     ''' The screen or report this card is on (e.g. "Sales Report", "Users"). When FigureHelp has an explanation
     ''' for this area and caption, a small "?" shows in the corner; clicking it explains the number.
@@ -316,7 +319,7 @@ Public Class StatCard
         Dim x As FigureExplanation = Explanation()
         If x Is Nothing Then Return
         Dim r As Rectangle = HelpRect()
-        FigureHelpPopup.ShowFor(Me, New Point(r.Right, r.Bottom + Theme.S(4)), _caption, _value, x)
+        FigureHelpPopup.ShowFor(Me, New Point(r.Right, r.Bottom + Theme.S(4)), _caption, _value, x, Calculation)
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
@@ -392,9 +395,10 @@ Public Module HelpBadge
     End Sub
 
     ''' <summary>Opens the explanation under the "?" of this tile.</summary>
-    Public Sub Open(tile As Control, caption As String, value As String, x As FigureExplanation, Optional top As Integer = -1)
+    Public Sub Open(tile As Control, caption As String, value As String, x As FigureExplanation, Optional top As Integer = -1,
+                    Optional calculation As String = "")
         Dim r As Rectangle = RectFor(tile.Width, top)
-        FigureHelpPopup.ShowFor(tile, New Point(r.Right, r.Bottom + Theme.S(4)), caption, value, x)
+        FigureHelpPopup.ShowFor(tile, New Point(r.Right, r.Bottom + Theme.S(4)), caption, value, x, calculation)
     End Sub
 
 End Module
@@ -404,13 +408,14 @@ Public Module FigureHelpPopup
 
     Private _open As ToolStripDropDown
 
-    Public Sub ShowFor(card As Control, anchorTopRight As Point, caption As String, value As String, x As FigureExplanation)
+    Public Sub ShowFor(card As Control, anchorTopRight As Point, caption As String, value As String, x As FigureExplanation,
+                       Optional calculation As String = "")
         If _open IsNot Nothing Then
             _open.Close()
             _open = Nothing
         End If
 
-        Dim panel As Panel = BuildPanel(caption, value, x)
+        Dim panel As Panel = BuildPanel(caption, value, x, calculation)
         Dim w As Integer = panel.Width
 
         Dim host As New ToolStripControlHost(panel)
@@ -437,8 +442,9 @@ Public Module FigureHelpPopup
     End Sub
 
     ''' <summary>The contents of the popup: title, the number shown now, how it is calculated, where it comes from.</summary>
-    Public Function BuildPanel(caption As String, value As String, x As FigureExplanation) As Panel
-        Dim w As Integer = Theme.S(380)
+    Public Function BuildPanel(caption As String, value As String, x As FigureExplanation, Optional calculation As String = "") As Panel
+        Dim hasCalc As Boolean = Not String.IsNullOrWhiteSpace(calculation)
+        Dim w As Integer = Theme.S(If(hasCalc, 470, 380))
         Dim pad As Integer = Theme.S(16)
         Dim panel As New Panel()
         panel.BackColor = Color.White
@@ -457,8 +463,31 @@ Public Module FigureHelpPopup
             y = v.Bottom + Theme.S(10)
         End If
 
-        y = AddSection(panel, "HOW IT IS CALCULATED", x.How, pad, y, w)
-        If Not String.IsNullOrEmpty(x.Source) Then y = AddSection(panel, "WHERE THE NUMBERS COME FROM", x.Source, pad, y + Theme.S(8), w)
+        If hasCalc Then
+            ' the formula (first line) in bold, then the same formula with this period's numbers
+            Dim calcText As String = calculation.Replace(vbCrLf, vbLf)
+            Dim nl As Integer = calcText.IndexOf(vbLf, StringComparison.Ordinal)
+            Dim formula As String = If(nl < 0, calcText, calcText.Substring(0, nl))
+            Dim rest As String = If(nl < 0, "", calcText.Substring(nl + 1))
+            Dim h As Label = MakeLabel("THE CALCULATION, WITH THESE NUMBERS", Theme.FontCaption, Theme.TextMuted, w - 2 * pad)
+            h.Location = New Point(pad, y)
+            panel.Controls.Add(h)
+            Dim f As Label = MakeLabel(formula, Theme.MakeFont(Theme.HeadingFamily, 10.0F), Theme.Maroon, w - 2 * pad)
+            f.Location = New Point(pad, h.Bottom + Theme.S(3))
+            panel.Controls.Add(f)
+            y = f.Bottom
+            If rest.Length > 0 Then
+                Dim b As Label = MakeLabel(rest.Replace(vbLf, Environment.NewLine), Theme.FontBase, Theme.TextDark, w - 2 * pad)
+                b.Location = New Point(pad, y + Theme.S(3))
+                panel.Controls.Add(b)
+                y = b.Bottom
+            End If
+            y = AddSection(panel, "ABOUT THIS NUMBER", x.How, pad, y + Theme.S(10), w, Theme.FontSmall)
+        Else
+            y = AddSection(panel, "HOW IT IS CALCULATED", x.How, pad, y, w)
+        End If
+        If Not String.IsNullOrEmpty(x.Source) Then y = AddSection(panel, "WHERE THE NUMBERS COME FROM", x.Source, pad, y + Theme.S(8), w,
+                                                                   If(hasCalc, Theme.FontSmall, Theme.FontBase))
         panel.Height = y + pad
         AddHandler panel.Paint,
             Sub(s As Object, e As PaintEventArgs)
@@ -472,11 +501,12 @@ Public Module FigureHelpPopup
         Return panel
     End Function
 
-    Private Function AddSection(panel As Panel, heading As String, body As String, pad As Integer, y As Integer, w As Integer) As Integer
+    Private Function AddSection(panel As Panel, heading As String, body As String, pad As Integer, y As Integer, w As Integer,
+                                Optional bodyFont As Font = Nothing) As Integer
         Dim h As Label = MakeLabel(heading, Theme.FontCaption, Theme.TextMuted, w - 2 * pad)
         h.Location = New Point(pad, y)
         panel.Controls.Add(h)
-        Dim b As Label = MakeLabel(body, Theme.FontBase, Theme.TextDark, w - 2 * pad)
+        Dim b As Label = MakeLabel(body, If(bodyFont, Theme.FontBase), If(bodyFont Is Nothing, Theme.TextDark, Theme.TextMuted), w - 2 * pad)
         b.Location = New Point(pad, h.Bottom + Theme.S(3))
         panel.Controls.Add(b)
         Return b.Bottom

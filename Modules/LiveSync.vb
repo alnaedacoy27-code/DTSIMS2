@@ -22,6 +22,8 @@ Public Enum LiveSecurityEvent
     AccountDisabled
     AccountLocked
     RoleChanged
+    ''' <summary>The same account logged in on another computer (detail = that computer's name).</summary>
+    LoggedInElsewhere
 End Enum
 
 ''' <summary>
@@ -125,7 +127,7 @@ Public Class LiveSync
         End If
         If wasOffline Then changed.Add("*")         ' we may have missed changes while offline
 
-        Dim needCheck As Boolean = changed.Contains("*") OrElse changed.Contains("users") OrElse
+        Dim needCheck As Boolean = changed.Contains("*") OrElse changed.Contains("users") OrElse changed.Contains("user_sessions") OrElse
                                    (DateTime.UtcNow - _lastValidate).TotalSeconds >= ValidateEverySeconds
         If needCheck Then
             _lastValidate = DateTime.UtcNow
@@ -163,6 +165,13 @@ Public Class LiveSync
         End If
         If Convert.ToInt32(row("is_locked")) = 1 AndAlso Permissions.NormalizeRole(row("role").ToString()) <> "superadmin" Then
             Fail(LiveSecurityEvent.AccountLocked, "")
+            Return False
+        End If
+
+        ' one computer per account: did this account log in somewhere else?
+        Dim elsewhere As String = SessionTracker.EndedByOtherLogin()
+        If elsewhere IsNot Nothing Then
+            Fail(LiveSecurityEvent.LoggedInElsewhere, elsewhere)
             Return False
         End If
 

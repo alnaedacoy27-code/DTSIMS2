@@ -170,6 +170,10 @@
     <Compile Include="Modules\SchemaUpgrade.vb" />
     <Compile Include="Modules\AuditData.vb" />
     <Compile Include="Modules\FigureHelp.vb" />
+    <Compile Include="Modules\ReportCalc.vb" />
+    <Compile Include="Modules\PaymentData.vb" />
+    <Compile Include="Forms\FileMaintenance\PaymentDialogs.vb" />
+    <Compile Include="Forms\FileMaintenance\PaymentMethodsForm.vb" />
     <Compile Include="Forms\SystemUtilities\AuditTrailForm.vb" />
     <Compile Include="Forms\Reports\ReportFormBase.vb" />
     <Compile Include="Forms\Reports\SalesReportForm.vb" />

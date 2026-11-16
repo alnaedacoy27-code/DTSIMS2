@@ -243,9 +243,27 @@ Public Module DutyData
         Next
         Dim avg As Long = If(recs.Count > 0, total \ recs.Count, 0L)
 
+        ' live calculation: each person's time, added up
+        Dim perPerson As New Dictionary(Of String, Long)()
+        For Each rec As DayRec In recs
+            Dim k As String = rec.Name
+            If Not perPerson.ContainsKey(k) Then perPerson(k) = 0L
+            perPerson(k) += rec.Seconds
+        Next
+        Dim names As New List(Of String)(perPerson.Keys)
+        names.Sort(Function(a, b) perPerson(b).CompareTo(perPerson(a)))
+        Dim personLines As New List(Of String)()
+        For Each nm As String In names
+            personLines.Add(nm & ": " & Duration(perPerson(nm)))
+        Next
+
         doc.Kpis.Add(New ReportKpi("People on duty", people.Count.ToString(Inv)))
-        doc.Kpis.Add(New ReportKpi("Total time logged in", Duration(total)))
-        doc.Kpis.Add(New ReportKpi("Average per person per day", Duration(avg)))
+        doc.Kpis.Add(New ReportKpi("Total time logged in", Duration(total)).WithCalc(ReportCalc.Lines(
+            "Total time = each person's time per day (log-in to log-out), added up",
+            ReportCalc.Bullets(personLines), "Total = " & Duration(total))))
+        doc.Kpis.Add(New ReportKpi("Average per person per day", Duration(avg)).WithCalc(ReportCalc.Lines(
+            "Average = total time / person-days (one person on one day = 1)",
+            Duration(total) & " / " & recs.Count.ToString(Inv) & If(recs.Count = 1, " person-day", " person-days") & " = " & Duration(avg))))
         doc.Kpis.Add(New ReportKpi("Longest day", Duration(longest)))
         doc.Kpis.Add(New ReportKpi("Sessions", sessions.Count.ToString(Inv)))
         doc.Kpis.Add(New ReportKpi("No logout recorded", openCount.ToString(Inv), openCount > 0))

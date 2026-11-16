@@ -141,6 +141,14 @@ Public Class ReportKpi
     Public Property Caption As String = ""
     Public Property Value As String = ""
     Public Property Warn As Boolean
+    ''' <summary>The formula with this period's real numbers, shown under the "?" (a few short lines).</summary>
+    Public Property Calculation As String = ""
+
+    ''' <summary>Sets the live calculation and returns the figure (so it can be written in one line).</summary>
+    Public Function WithCalc(text As String) As ReportKpi
+        Calculation = If(text, "")
+        Return Me
+    End Function
 
     Public Sub New(caption As String, value As String, Optional warn As Boolean = False)
         Me.Caption = caption
@@ -217,11 +225,13 @@ Public Module ReportFormat
 
     ''' <summary>"PHP 1,234.00" for print / PDF / Excel text.</summary>
     Public Function Php(d As Decimal) As String
+        If d < 0D Then Return "-PHP " & (-d).ToString("N2", Inv)
         Return "PHP " & d.ToString("N2", Inv)
     End Function
 
-    ''' <summary>On-screen peso text.</summary>
+    ''' <summary>On-screen peso text: "₱1,234.00", and "-₱168.00" (minus before the peso sign).</summary>
     Public Function Peso(d As Decimal) As String
+        If d < 0D Then Return "-" & PesoSign & (-d).ToString("N2", Inv)
         Return PesoSign & d.ToString("N2", Inv)
     End Function
 

@@ -246,7 +246,8 @@ Public Module BackupService
                         w.Line(MetaPrefix & "by: " & OneLine(AppSession.FullName & " (" & AppSession.Username & ")"))
                         w.Line(MetaPrefix & "note: " & OneLine(note))
                         w.Line(MetaPrefix & "database: " & conn.Database)
-                        w.Line(MetaPrefix & "schema: " & Db.RequiredSchemaVersion)
+                        ' the version this database really has (not the one this app needs: an older database is backed up before its upgrade)
+                        w.Line(MetaPrefix & "schema: " & Convert.ToInt32(ScalarOn(conn, "SELECT COALESCE(MAX(version), 0) FROM schema_version")))
                         w.Line(MetaPrefix & "tables: " & tables.Count)
                         w.Line(MetaPrefix & "rows: " & total)
                         w.Line(MetaPrefix & "computer: " & OneLine(Environment.MachineName))
@@ -529,6 +530,13 @@ Public Module BackupService
                 End Using
                 Exec(conn, "SET UNIQUE_CHECKS = 1")
                 Exec(conn, "SET FOREIGN_KEY_CHECKS = 1")
+
+                ' a backup from an older version has no rows for newer tables (e.g. Cash in payment_methods): put them back
+                Try
+                    SchemaUpgrade.EnsureSeedRows(conn)
+                Catch
+                    ' ignore: the app still works (Cash is always offered at the POS)
+                End Try
 
                 ' the other laptops see the log go back to the start and reload every screen
                 Try

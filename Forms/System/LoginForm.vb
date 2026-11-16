@@ -80,6 +80,40 @@ Public Class LoginForm
         End Using
     End Sub
 
+    ''' <summary>
+    ''' One account, one computer: when this account is logged in somewhere else right now, say so and ask.
+    ''' Continuing logs the other computer off (it shows why). False = the person chose not to continue.
+    ''' </summary>
+    Private Function ConfirmOneComputer() As Boolean
+        Dim devices As System.Collections.Generic.List(Of String)
+        Try
+            devices = SessionTracker.LiveDevicesOf(AppSession.UserId)
+        Catch
+            Return True                     ' cannot check: do not block the log-in
+        End Try
+        If devices.Count = 0 Then Return True
+
+        Dim names As New System.Collections.Generic.List(Of String)()
+        For Each d As String In devices
+            names.Add(If(String.Equals(d, Environment.MachineName, StringComparison.OrdinalIgnoreCase) OrElse d.Length = 0,
+                         "another window on this computer", d))
+        Next
+        Dim where As String = String.Join(", ", names.ToArray())
+        Dim answer As DialogResult = MessageBox.Show(Me,
+            "This account is already logged in on " & where & "." & Environment.NewLine & Environment.NewLine &
+            "One account can only be used on one computer at a time. If you continue, it will be logged off there " &
+            "(anything not saved on that computer is lost)." & Environment.NewLine & Environment.NewLine &
+            "Log in here and log off the other computer?",
+            "Already logged in", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2)
+        If answer = DialogResult.Yes Then
+            AuditLog.Write("LOGIN", "Login", "'" & AppSession.Username & "' logged in here and logged off " & where)
+            Return True
+        End If
+        AuditLog.Write("LOGIN_CANCELLED", "Login", "'" & AppSession.Username & "' did not log in: already logged in on " & where)
+        ShowMessage("Not logged in. The account stays logged in on " & where & ".", True)
+        Return False
+    End Function
+
     Private Sub OnLogin(sender As Object, e As EventArgs)
         ShowMessage("", False)
         _login.Enabled = False
@@ -87,6 +121,11 @@ Public Class LoginForm
         Try
             Dim msg As String = ""
             If AuthService.TryLogin(_username.Value, _password.Value, msg) Then
+                If Not ConfirmOneComputer() Then
+                    AppSession.Clear()
+                    _password.Value = ""
+                    Return
+                End If
                 DialogResult = DialogResult.OK
             Else
                 ShowMessage(msg, True)

@@ -151,7 +151,11 @@ Public Module ReportData
         Dim prm As Dictionary(Of String, Object) = SalesParams(r, cashierId)
 
         Dim t As DataTable = Db.Table("SELECT COUNT(*) AS n, COALESCE(SUM(s.total), 0) AS sales, " &
-                                      "COALESCE(SUM(s.discount_amount + s.special_discount_amount), 0) AS disc " &
+                                      "COALESCE(SUM(s.discount_amount + s.special_discount_amount), 0) AS disc, " &
+                                      "COALESCE(SUM(s.subtotal), 0) AS regular, COALESCE(SUM(s.discount_amount), 0) AS d1, " &
+                                      "COALESCE(SUM(s.special_discount_amount), 0) AS d2, " &
+                                      "COALESCE(SUM(s.discount_amount + s.special_discount_amount > 0), 0) AS with_disc, " &
+                                      "MIN(s.receipt_no) AS first_no, MAX(s.receipt_no) AS last_no " &
                                       "FROM sales s WHERE " & SalesWhere, prm)
         Dim it As DataTable = Db.Table("SELECT COALESCE(SUM(si.qty), 0) AS units, COALESCE(SUM(si.qty * si.cost_price), 0) AS cost, " &
                                        "COALESCE(SUM(si.line_total), 0) AS rev " &
@@ -163,12 +167,65 @@ Public Module ReportData
         Dim cost As Decimal = Dec(it.Rows(0)("cost"))
         Dim rev As Decimal = Dec(it.Rows(0)("rev"))
 
-        doc.Kpis.Add(New ReportKpi("Total sales", ReportFormat.Peso(sales)))
-        doc.Kpis.Add(New ReportKpi("Transactions", ReportFormat.Whole(n)))
-        doc.Kpis.Add(New ReportKpi("Items sold", ReportFormat.Whole(units)))
-        doc.Kpis.Add(New ReportKpi("Average sale", ReportFormat.Peso(If(n > 0D, Math.Round(sales / n, 2), 0D))))
-        doc.Kpis.Add(New ReportKpi("Profit (sales - cost)", ReportFormat.Peso(sales - cost)))
-        doc.Kpis.Add(New ReportKpi("Discounts given", ReportFormat.Peso(disc)))
+        ' ---- live calculations under the "?"
+        Dim regular As Decimal = Dec(t.Rows(0)("regular"))
+        Dim d1 As Decimal = Dec(t.Rows(0)("d1"))
+        Dim d2 As Decimal = Dec(t.Rows(0)("d2"))
+        Dim receipts As String = If(n = 1D, "receipt " & Txt(t.Rows(0)("first_no")),
+                                    If(n = 0D, "no receipts", ReportCalc.Count(n, "receipt", "receipts") &
+                                       " (" & Txt(t.Rows(0)("first_no")) & " to " & Txt(t.Rows(0)("last_no")) & ")"))
+        ' total = regular prices - discounts - special prices
+        Dim salesMath As String = ReportCalc.P(regular) & " regular prices" &
+                                  If(d1 > 0D, " - " & ReportCalc.P(d1) & " discounts", "") &
+                                  If(d2 > 0D, " - " & ReportCalc.P(d2) & " special prices", "") &
+                                  " = " & ReportCalc.P(sales)
+        ' cost of every item sold, at the cost and price it had on its receipt
+        Dim costLines As New List(Of String)()
+        Dim unitLines As New List(Of String)()
+        Dim costRest As Decimal = 0D
+        Dim byItem As DataTable = Db.Table("SELECT si.product_name AS name, si.measurement AS size, si.cost_price AS cost, si.unit_price AS price, " &
+                                           "SUM(si.qty) AS qty, SUM(si.qty * si.cost_price) AS line_cost " &
+                                           "FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE " & SalesWhere &
+                                           " GROUP BY si.product_name, si.measurement, si.cost_price, si.unit_price ORDER BY line_cost DESC, qty DESC", prm)
+        For i As Integer = 0 To byItem.Rows.Count - 1
+            Dim line As DataRow = byItem.Rows(i)
+            Dim nm As String = ReportCalc.Item(line("name"), line("size"))
+            costLines.Add(nm & ": " & ReportCalc.N(Dec(line("qty"))) & " x " & ReportCalc.P(Dec(line("cost"))) & " = " & ReportCalc.P(Dec(line("line_cost"))) &
+                          "  (sold at " & ReportCalc.P(Dec(line("price"))) & ")")
+            unitLines.Add(nm & ": " & ReportCalc.N(Dec(line("qty"))))
+            If i >= ReportCalc.MaxLines Then costRest += Dec(line("line_cost"))
+        Next
+        Dim profit As Decimal = sales - cost
+        Dim why As String = ""
+        If profit < 0D AndAlso regular - cost >= 0D Then
+            why = "Below 0 because the " & ReportCalc.P(d1 + d2) & " taken off was more than the normal profit of " &
+                  ReportCalc.P(regular - cost) & " (" & ReportCalc.P(regular) & " - " & ReportCalc.P(cost) & ")."
+        ElseIf profit < 0D Then
+            why = "Below 0 because items were priced below their cost."
+        End If
+
+        doc.Kpis.Add(New ReportKpi("Total sales", ReportFormat.Peso(sales)).WithCalc(ReportCalc.Lines(
+            "Total sales = regular prices - discounts - special prices",
+            salesMath, "From " & receipts & ".")))
+        doc.Kpis.Add(New ReportKpi("Transactions", ReportFormat.Whole(n)).WithCalc(ReportCalc.Lines(
+            "Transactions = number of receipts", If(n = 1D, "1 receipt: " & receipts.Substring("receipt ".Length), receipts & "."))))
+        doc.Kpis.Add(New ReportKpi("Items sold", ReportFormat.Whole(units)).WithCalc(ReportCalc.Lines(
+            "Items sold = quantities on every receipt, added up", ReportCalc.Bullets(unitLines), "Total = " & ReportCalc.N(units) & " pieces")))
+        doc.Kpis.Add(New ReportKpi("Average sale", ReportFormat.Peso(If(n > 0D, Math.Round(sales / n, 2), 0D))).WithCalc(ReportCalc.Lines(
+            "Average sale = Total sales / Transactions",
+            ReportCalc.P(sales) & " / " & ReportCalc.N(n) & " = " & ReportCalc.P(If(n > 0D, Math.Round(sales / n, 2), 0D)))))
+        doc.Kpis.Add(New ReportKpi("Profit (sales - cost)", ReportFormat.Peso(profit)).WithCalc(ReportCalc.Lines(
+            "Profit = Total sales - cost of the items sold",
+            "Cost (quantity x cost price):",
+            ReportCalc.Bullets(costLines, If(costRest > 0D, ": " & ReportCalc.P(costRest), "")),
+            "  Total cost = " & ReportCalc.P(cost),
+            "Total sales: " & salesMath,
+            "Profit = " & ReportCalc.P(sales) & " - " & ReportCalc.P(cost) & " = " & ReportCalc.P(profit),
+            why)))
+        doc.Kpis.Add(New ReportKpi("Discounts given", ReportFormat.Peso(disc)).WithCalc(ReportCalc.Lines(
+            "Discounts given = discounts + special prices",
+            ReportCalc.P(d1) & " + " & ReportCalc.P(d2) & " = " & ReportCalc.P(disc),
+            "On " & ReportCalc.N(Dec(t.Rows(0)("with_disc"))) & " of " & ReportCalc.Count(n, "receipt", "receipts") & ".")))
 
         Dim prevRange As DateRange = ReportPeriods.RangeFor(p, ReportPeriods.Shift(p, r.From, -1))
         doc.Note = CompareNote("Sales", sales, SalesTotal(prevRange, cashierId), p)
@@ -223,18 +280,39 @@ Public Module ReportData
         If cashierId > 0 Then doc.Note = "Your sales only"
 
         Dim agg As DataTable = Db.Table("SELECT COUNT(*) AS n, COALESCE(SUM(s.total), 0) AS sales, COALESCE(MAX(s.total), 0) AS biggest, " &
-                                        "COALESCE(SUM(s.discount_amount + s.special_discount_amount), 0) AS disc FROM sales s WHERE " & SalesWhere, prm)
+                                        "COALESCE(SUM(s.discount_amount + s.special_discount_amount), 0) AS disc, " &
+                                        "COALESCE(SUM(s.subtotal), 0) AS regular, COALESCE(SUM(s.discount_amount), 0) AS d1, " &
+                                        "COALESCE(SUM(s.special_discount_amount), 0) AS d2 FROM sales s WHERE " & SalesWhere, prm)
         Dim n As Decimal = Dec(agg.Rows(0)("n"))
         Dim sales As Decimal = Dec(agg.Rows(0)("sales"))
-        doc.Kpis.Add(New ReportKpi("Transactions", ReportFormat.Whole(n)))
-        doc.Kpis.Add(New ReportKpi("Total sales", ReportFormat.Peso(sales)))
-        doc.Kpis.Add(New ReportKpi("Average sale", ReportFormat.Peso(If(n > 0D, Math.Round(sales / n, 2), 0D))))
-        doc.Kpis.Add(New ReportKpi("Largest sale", ReportFormat.Peso(Dec(agg.Rows(0)("biggest")))))
-        doc.Kpis.Add(New ReportKpi("Discounts given", ReportFormat.Peso(Dec(agg.Rows(0)("disc")))))
+        Dim regular As Decimal = Dec(agg.Rows(0)("regular"))
+        Dim d1 As Decimal = Dec(agg.Rows(0)("d1"))
+        Dim d2 As Decimal = Dec(agg.Rows(0)("d2"))
+        Dim avg As Decimal = If(n > 0D, Math.Round(sales / n, 2), 0D)
+        Dim big As DataTable = Db.Table("SELECT s.receipt_no, s.created_at, s.total FROM sales s WHERE " & SalesWhere &
+                                        " ORDER BY s.total DESC, s.id LIMIT 1", prm)
+        Dim bigText As String = If(big.Rows.Count = 0, "No receipts in this period.",
+                                   "Receipt " & Txt(big.Rows(0)("receipt_no")) & ", " &
+                                   Convert.ToDateTime(big.Rows(0)("created_at")).ToString("MMM d, yyyy h:mm tt", Inv) & ": " &
+                                   ReportCalc.P(Dec(big.Rows(0)("total"))))
+        doc.Kpis.Add(New ReportKpi("Transactions", ReportFormat.Whole(n)).WithCalc(ReportCalc.Lines(
+            "Transactions = number of receipts", ReportCalc.Count(n, "receipt", "receipts") & " in the list below.")))
+        doc.Kpis.Add(New ReportKpi("Total sales", ReportFormat.Peso(sales)).WithCalc(ReportCalc.Lines(
+            "Total sales = regular prices - discounts - special prices",
+            ReportCalc.P(regular) & If(d1 > 0D, " - " & ReportCalc.P(d1), "") & If(d2 > 0D, " - " & ReportCalc.P(d2), "") & " = " & ReportCalc.P(sales))))
+        doc.Kpis.Add(New ReportKpi("Average sale", ReportFormat.Peso(avg)).WithCalc(ReportCalc.Lines(
+            "Average sale = Total sales / Transactions",
+            ReportCalc.P(sales) & " / " & ReportCalc.N(n) & " = " & ReportCalc.P(avg))))
+        doc.Kpis.Add(New ReportKpi("Largest sale", ReportFormat.Peso(Dec(agg.Rows(0)("biggest")))).WithCalc(ReportCalc.Lines(
+            "Largest sale = the highest receipt total", bigText)))
+        doc.Kpis.Add(New ReportKpi("Discounts given", ReportFormat.Peso(Dec(agg.Rows(0)("disc")))).WithCalc(ReportCalc.Lines(
+            "Discounts given = discounts + special prices",
+            ReportCalc.P(d1) & " + " & ReportCalc.P(d2) & " = " & ReportCalc.P(d1 + d2))))
 
         Dim dt As DataTable = Db.Table("SELECT s.id, s.receipt_no, s.created_at, COALESCE(s.cashier_name, '') AS cashier, COALESCE(s.customer_name, '') AS customer, " &
                                        "(SELECT COALESCE(SUM(si.qty), 0) FROM sale_items si WHERE si.sale_id = s.id) AS items, " &
-                                       "(s.discount_amount + s.special_discount_amount) AS discount, s.total, s.amount_paid " &
+                                       "(s.discount_amount + s.special_discount_amount) AS discount, s.total, s.amount_paid, " &
+                                       "CONCAT(COALESCE(s.payment_method, 'Cash'), IF(s.payment_reference IS NULL, '', CONCAT(' ', s.payment_reference))) AS paid_with " &
                                        "FROM sales s WHERE " & SalesWhere & " ORDER BY s.created_at DESC, s.id DESC LIMIT " & (MaxRows + 1), prm)
         If dt.Rows.Count > MaxRows Then
             dt.Rows.RemoveAt(dt.Rows.Count - 1)
@@ -251,6 +329,7 @@ Public Module ReportData
         doc.Columns.Add(New ReportColumn("DISCOUNT", "discount", ColKind.Money, 10, 100))
         doc.Columns.Add(New ReportColumn("TOTAL", "total", ColKind.Money, 11, 110))
         doc.Columns.Add(New ReportColumn("PAID", "amount_paid", ColKind.Money, 11, 110))
+        doc.Columns.Add(New ReportColumn("PAID WITH", "paid_with", ColKind.Text, 14, 130))
         doc.Data = dt
         doc.EmptyText = "No sales were made in this period."
         Return doc
@@ -277,12 +356,24 @@ Public Module ReportData
             row("share") = Pct(Dec(row("sales")), total)
         Next
 
-        doc.Kpis.Add(New ReportKpi("Sales in these categories", ReportFormat.Peso(total)))
+        Dim catLines As New List(Of String)()
+        Dim catRest As Decimal = 0D
+        For i As Integer = 0 To dt.Rows.Count - 1
+            catLines.Add(Txt(dt.Rows(i)("category")) & ": " & ReportCalc.P(Dec(dt.Rows(i)("sales"))))
+            If i >= ReportCalc.MaxLines Then catRest += Dec(dt.Rows(i)("sales"))
+        Next
+        doc.Kpis.Add(New ReportKpi("Sales in these categories", ReportFormat.Peso(total)).WithCalc(ReportCalc.Lines(
+            "Sales in these categories = item lines sold, added up per category",
+            ReportCalc.Bullets(catLines, If(catRest > 0D, ": " & ReportCalc.P(catRest), "")), "Total = " & ReportCalc.P(total))))
         doc.Kpis.Add(New ReportKpi("Categories sold", ReportFormat.Whole(dt.Rows.Count)))
         doc.Kpis.Add(New ReportKpi("Units sold", ReportFormat.Whole(units)))
         If dt.Rows.Count > 0 Then
-            doc.Kpis.Add(New ReportKpi("Best category", Txt(dt.Rows(0)("category"))))
-            doc.Kpis.Add(New ReportKpi("Best category share", Dec(dt.Rows(0)("share")).ToString("0.0", Inv) & "%"))
+            Dim best As Decimal = Dec(dt.Rows(0)("sales"))
+            doc.Kpis.Add(New ReportKpi("Best category", Txt(dt.Rows(0)("category"))).WithCalc(ReportCalc.Lines(
+                "Best category = the category with the highest sales", Txt(dt.Rows(0)("category")) & ": " & ReportCalc.P(best))))
+            doc.Kpis.Add(New ReportKpi("Best category share", Dec(dt.Rows(0)("share")).ToString("0.0", Inv) & "%").WithCalc(ReportCalc.Lines(
+                "Share = best category's sales / all category sales x 100",
+                ReportCalc.P(best) & " / " & ReportCalc.P(total) & " x 100 = " & ReportCalc.Pct(best, total))))
         End If
 
         doc.Charts.Add(TopChart("Sales by category", dt, "category", "", "sales", True))
@@ -338,7 +429,9 @@ Public Module ReportData
         doc.Kpis.Add(New ReportKpi("Stock received", ReportFormat.Whole(received)))
         doc.Kpis.Add(New ReportKpi("Units sold", ReportFormat.Whole(sold)))
         doc.Kpis.Add(New ReportKpi("Adjustments (net)", ReportFormat.Whole(adj)))
-        doc.Kpis.Add(New ReportKpi("Net stock change", ReportFormat.Whole(received - sold + adj)))
+        doc.Kpis.Add(New ReportKpi("Net stock change", ReportFormat.Whole(received - sold + adj)).WithCalc(ReportCalc.Lines(
+            "Net stock change = received - sold + adjustments",
+            ReportCalc.N(received) & " - " & ReportCalc.N(sold) & " + " & ReportCalc.N(adj) & " = " & ReportCalc.N(received - sold + adj) & " pieces")))
         doc.Kpis.Add(New ReportKpi("Products moved", ReportFormat.Whole(moved)))
     End Sub
 
@@ -456,10 +549,35 @@ Public Module ReportData
         Dim units As Decimal = Dec(Db.Scalar("SELECT COALESCE(SUM(di.qty), 0) FROM delivery_items di JOIN deliveries d ON d.id = di.delivery_id " &
                                              "WHERE d.status = 'sent' AND " & DelWhere, prm))
         Dim drafts As Decimal = Dec(Db.Scalar("SELECT COUNT(*) FROM deliveries WHERE status = 'draft'"))
+
+        ' live calculations: each delivery's cost and expected profit
+        Dim per As DataTable = Db.Table("SELECT d.batch_no, sp.company_name AS supplier, d.total_cost, d.expected_profit " &
+                                        "FROM deliveries d JOIN suppliers sp ON sp.id = d.supplier_id " &
+                                        "WHERE d.status = 'sent' AND " & DelWhere & " ORDER BY d.total_cost DESC", prm)
+        Dim costLines As New List(Of String)()
+        Dim profLines As New List(Of String)()
+        Dim costRest As Decimal = 0D, profRest As Decimal = 0D
+        For i As Integer = 0 To per.Rows.Count - 1
+            Dim r0 As DataRow = per.Rows(i)
+            Dim who As String = Txt(r0("batch_no")) & " (" & Txt(r0("supplier")) & ")"
+            costLines.Add(who & ": " & ReportCalc.P(Dec(r0("total_cost"))))
+            profLines.Add(who & ": " & ReportCalc.P(Dec(r0("expected_profit"))))
+            If i >= ReportCalc.MaxLines Then
+                costRest += Dec(r0("total_cost"))
+                profRest += Dec(r0("expected_profit"))
+            End If
+        Next
+        Dim cost As Decimal = Dec(t.Rows(0)("cost"))
+        Dim prof As Decimal = Dec(t.Rows(0)("prof"))
+
         doc.Kpis.Add(New ReportKpi("Deliveries received", ReportFormat.Whole(Dec(t.Rows(0)("n")))))
         doc.Kpis.Add(New ReportKpi("Units received", ReportFormat.Whole(units)))
-        doc.Kpis.Add(New ReportKpi("Total cost", ReportFormat.Peso(Dec(t.Rows(0)("cost")))))
-        doc.Kpis.Add(New ReportKpi("Expected profit", ReportFormat.Peso(Dec(t.Rows(0)("prof")))))
+        doc.Kpis.Add(New ReportKpi("Total cost", ReportFormat.Peso(cost)).WithCalc(ReportCalc.Lines(
+            "Total cost = each delivery's cost (quantity x cost per piece), added up",
+            ReportCalc.Bullets(costLines, If(costRest > 0D, ": " & ReportCalc.P(costRest), "")), "Total = " & ReportCalc.P(cost))))
+        doc.Kpis.Add(New ReportKpi("Expected profit", ReportFormat.Peso(prof)).WithCalc(ReportCalc.Lines(
+            "Expected profit = (selling price - cost) x quantity, for every item delivered",
+            ReportCalc.Bullets(profLines, If(profRest > 0D, ": " & ReportCalc.P(profRest), "")), "Total = " & ReportCalc.P(prof))))
         doc.Kpis.Add(New ReportKpi("Suppliers", ReportFormat.Whole(Dec(t.Rows(0)("sup")))))
         doc.Kpis.Add(New ReportKpi("Drafts not yet sent", ReportFormat.Whole(drafts), drafts > 0D))
     End Sub
@@ -609,6 +727,29 @@ Public Module LossData
         Return d
     End Function
 
+    ''' <summary>Live calculation for the receipts that collected less than their items cost: one line per receipt.</summary>
+    Private Function BelowCostCalc(q As Dictionary(Of String, Object)) As String
+        Dim dt As DataTable = Db.Table("SELECT x.receipt_no, x.cost, x.collected FROM " &
+                                       "(SELECT s.receipt_no, (s.total - s.points_value) AS collected, " &
+                                       "(SELECT COALESCE(SUM(si.qty * si.cost_price), 0) FROM sale_items si WHERE si.sale_id = s.id) AS cost " &
+                                       "FROM sales s WHERE " & InRange & ") x WHERE x.collected < x.cost ORDER BY (x.cost - x.collected) DESC", q)
+        If dt.Rows.Count = 0 Then
+            Return ReportCalc.Lines("Loss = cost of the items - money collected (total - points)", "No receipt was below cost in this period.")
+        End If
+        Dim items As New List(Of String)()
+        Dim total As Decimal = 0D, rest As Decimal = 0D
+        For i As Integer = 0 To dt.Rows.Count - 1
+            Dim c As Decimal = Dec(dt.Rows(i)("cost"))
+            Dim got As Decimal = Dec(dt.Rows(i)("collected"))
+            items.Add(Txt(dt.Rows(i)("receipt_no")) & ": " & ReportCalc.P(c) & " - " & ReportCalc.P(got) & " = " & ReportCalc.P(c - got))
+            total += c - got
+            If i >= ReportCalc.MaxLines Then rest += c - got
+        Next
+        Return ReportCalc.Lines("Loss = cost of the items - money collected (total - points)",
+                                ReportCalc.Bullets(items, If(rest > 0D, ": " & ReportCalc.P(rest), "")),
+                                "Total = " & ReportCalc.P(total))
+    End Function
+
     ''' <summary>The six status figures shared by the Summary, Sales and Cashiers views, plus a one-line note.</summary>
     Private Sub AddKpis(doc As ReportDoc, p As ReportPeriod, r As DateRange)
         Dim q As Dictionary(Of String, Object) = Prm(r)
@@ -628,13 +769,20 @@ Public Module LossData
         Dim given As Decimal = disc + spec + pts
         Dim belowN As Decimal = Dec(below.Rows(0)("n"))
         Dim belowLoss As Decimal = Dec(below.Rows(0)("loss"))
+        Dim affected As Decimal = Dec(t.Rows(0)("affected"))
 
-        doc.Kpis.Add(New ReportKpi("Total given up", ReportFormat.Peso(given)))
+        doc.Kpis.Add(New ReportKpi("Total given up", ReportFormat.Peso(given)).WithCalc(ReportCalc.Lines(
+            "Total given up = discounts + special prices + points",
+            ReportCalc.P(disc) & " + " & ReportCalc.P(spec) & " + " & ReportCalc.P(pts) & " = " & ReportCalc.P(given),
+            "That is " & ReportCalc.Pct(given, fullPrice) & " of " & ReportCalc.P(fullPrice) & " at regular prices.")))
         doc.Kpis.Add(New ReportKpi("Discounts", ReportFormat.Peso(disc)))
         doc.Kpis.Add(New ReportKpi("Special prices", ReportFormat.Peso(spec)))
         doc.Kpis.Add(New ReportKpi("Points redeemed", ReportFormat.Peso(pts)))
-        doc.Kpis.Add(New ReportKpi("Sales with a concession", ReportFormat.Whole(Dec(t.Rows(0)("affected"))) & " of " & ReportFormat.Whole(n)))
-        doc.Kpis.Add(New ReportKpi("Sold below cost (" & ReportFormat.Whole(belowN) & ")", ReportFormat.Peso(belowLoss), belowN > 0D))
+        doc.Kpis.Add(New ReportKpi("Sales with a concession", ReportFormat.Whole(affected) & " of " & ReportFormat.Whole(n)).WithCalc(ReportCalc.Lines(
+            "Share = receipts with a discount, special price or points / all receipts x 100",
+            ReportCalc.N(affected) & " / " & ReportCalc.N(n) & " x 100 = " & ReportCalc.Pct(affected, n))))
+        doc.Kpis.Add(New ReportKpi("Sold below cost (" & ReportFormat.Whole(belowN) & ")", ReportFormat.Peso(belowLoss), belowN > 0D).WithCalc(
+            BelowCostCalc(q)))
 
         Dim prevRange As DateRange = ReportPeriods.RangeFor(p, ReportPeriods.Shift(p, r.From, -1))
         Dim prev As Decimal = Dec(Db.Scalar("SELECT COALESCE(SUM" & GivenUp & ", 0) FROM sales s WHERE " & InRange, Prm(prevRange)))
@@ -877,7 +1025,7 @@ Public Module LossData
             If l > biggest Then biggest = l
         Next
         doc.Kpis.Add(New ReportKpi("Sales below cost", ReportFormat.Whole(dt.Rows.Count), dt.Rows.Count > 0))
-        doc.Kpis.Add(New ReportKpi("Total loss", ReportFormat.Peso(totalLoss), totalLoss > 0D))
+        doc.Kpis.Add(New ReportKpi("Total loss", ReportFormat.Peso(totalLoss), totalLoss > 0D).WithCalc(BelowCostCalc(Prm(r))))
         doc.Kpis.Add(New ReportKpi("Biggest single loss", ReportFormat.Peso(biggest)))
         doc.Kpis.Add(New ReportKpi("Cost of those items", ReportFormat.Peso(costSum)))
         doc.Note = "Sales where the customer paid less than the items cost the shop."

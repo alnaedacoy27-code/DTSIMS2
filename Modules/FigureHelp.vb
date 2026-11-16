@@ -359,6 +359,15 @@ Public Module FigureHelp
             "Discounts the cashier can pick at the POS right now. Deactivated ones are kept for the past sales.",
             "File Maintenance > Discounts.")
 
+        ' ============================================================ File Maintenance > Payment Methods
+        Dim pm As String = "Payment Methods"
+        add(pm, "Payment methods",
+            "Every payment method, active or not, Cash included.",
+            "File Maintenance > Payment Methods.")
+        add(pm, "Active",
+            "Payment methods the cashier can choose at the POS right now. Cash is always active.",
+            "File Maintenance > Payment Methods.")
+
         ' ============================================================ POS
         Dim po As String = "POS"
         add(po, "My transactions (24 h)",

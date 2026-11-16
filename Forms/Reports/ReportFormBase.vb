@@ -522,6 +522,7 @@ Public MustInherit Class ReportFormBase
                 _cards(i).Caption = doc.Kpis(i).Caption
                 _cards(i).Warn = doc.Kpis(i).Warn
                 _cards(i).HelpArea = area
+                _cards(i).Calculation = doc.Kpis(i).Calculation
                 _cards(i).Visible = True
             Else
                 _cards(i).Visible = False

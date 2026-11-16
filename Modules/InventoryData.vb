@@ -10,7 +10,9 @@ Public Module Currency
 
     Public ReadOnly Peso As String = Char.ConvertFromUtf32(&H20B1)
 
+    ''' <summary>"₱1,234.00", and "-₱168.00" (minus before the peso sign).</summary>
     Public Function Format(amount As Decimal) As String
+        If amount < 0D Then Return "-" & Peso & (-amount).ToString("N2", CultureInfo.InvariantCulture)
         Return Peso & amount.ToString("N2", CultureInfo.InvariantCulture)
     End Function
 
