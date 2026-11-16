@@ -126,6 +126,13 @@ Public Module Db
                             Return DbStatus.SchemaOutdated
                         End Try
                     End If
+                    If v > RequiredSchemaVersion Then
+                        ' an older copy of the app must not keep working on a database a newer version has changed
+                        ' (it would skip newer rules: one computer per account, payment checks ...)
+                        message = "This database is used by a newer version of DTSIMS2 (database version " & v &
+                                  ", this copy knows up to " & RequiredSchemaVersion & "). Install the latest version of the app."
+                        Return DbStatus.SchemaOutdated
+                    End If
                     If v < RequiredSchemaVersion Then
                         message = "The database is out of date (version " & v & ", this app needs " & RequiredSchemaVersion &
                                   "). Run the newer scripts in the Database folder."

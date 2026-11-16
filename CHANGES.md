@@ -51,6 +51,12 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
   costs or profit.
   It loads in the background and refreshes when sales, stock or deliveries change, and every minute.
 
+### One computer per account: works against older copies too (1.0.0.6)
+- An updated copy now also checks, every few seconds, whether its account logged in again on another computer
+  (even one running an older copy that does not log others off). If so, it logs itself off with the message.
+- A copy of the app older than its database now refuses to start ("Install the latest version"), from the next
+  database version on. Copies installed before 1.0.0.6 do not have this check: update them by hand once.
+
 ### Dashboard refresh
 - The dashboard reloads within about a second when anything it shows changes, on any laptop: sales, stock, deliveries,
   suppliers, categories, loyalty customers and points, discounts, settings, users, and log-ins / log-outs

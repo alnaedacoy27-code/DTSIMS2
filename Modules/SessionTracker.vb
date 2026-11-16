@@ -103,6 +103,32 @@ Public Module SessionTracker
         Return If(bar >= 0, reason.Substring(bar + 1), "another computer")
     End Function
 
+    ''' <summary>
+    ''' The same account has a NEWER live session on another computer (it logged in after this one), even when that
+    ''' computer runs an older version that does not log this one off. This computer then ends its own session and
+    ''' returns that computer's name; Nothing when there is none. Checked by the live engine.
+    ''' </summary>
+    Public Function EndIfNewerSessionElsewhere() As String
+        Dim sid As String = _sessionId
+        If sid.Length = 0 Then Return Nothing
+        Dim o As Object = Db.Scalar(
+            "SELECT COALESCE(o.device_name, '') FROM user_sessions o JOIN user_sessions me ON me.session_id = @s " &
+            "WHERE o.user_id = me.user_id AND o.id > me.id AND o.is_active = 1 AND o.end_reason IS NULL " &
+            "AND o.last_seen >= DATE_SUB(NOW(), INTERVAL 30 SECOND) ORDER BY o.id DESC LIMIT 1",
+            Db.Params("@s", sid))
+        If o Is Nothing OrElse o Is DBNull.Value Then Return Nothing
+        Dim device As String = o.ToString()
+        If device.Length = 0 Then device = "another computer"
+        Try
+            Db.NonQuery("UPDATE user_sessions SET is_active = 0, logout_at = NOW(), end_reason = @r WHERE session_id = @s AND end_reason IS NULL",
+                        Db.Params("@r", OtherLoginReason & "|" & Left(device, 80), "@s", sid))
+            SignalSessionsChanged()
+        Catch
+            ' this computer still logs itself off
+        End Try
+        Return device
+    End Function
+
     ''' <summary>Forget this computer's session without writing anything (it was ended from another computer).</summary>
     Public Sub Abandon()
         _sessionId = ""

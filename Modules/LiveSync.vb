@@ -170,6 +170,8 @@ Public Class LiveSync
 
         ' one computer per account: did this account log in somewhere else?
         Dim elsewhere As String = SessionTracker.EndedByOtherLogin()
+        ' ...or it logged in again somewhere else with a version that does not tell this one: this older session gives way
+        If elsewhere Is Nothing Then elsewhere = SessionTracker.EndIfNewerSessionElsewhere()
         If elsewhere IsNot Nothing Then
             Fail(LiveSecurityEvent.LoggedInElsewhere, elsewhere)
             Return False
