@@ -18,8 +18,6 @@ Public Class DashboardModel
     Public ShowCosts As Boolean
     ''' <summary>Discounts, special prices and points given (Loss Report).</summary>
     Public ShowGiven As Boolean
-    ''' <summary>Damaged / lost stock (loss_records).</summary>
-    Public ShowStockLosses As Boolean
     Public ShowCustomers As Boolean
 
     Public SalesToday As Decimal
@@ -49,10 +47,7 @@ Public Class DashboardModel
 
     Public ProfitMonth As Decimal
     Public GivenMonth As Decimal
-    Public StockLossCount As Integer
-    Public StockLossQty As Decimal
-    Public StockLossValue As Decimal
-    ''' <summary>Recent discounts, special prices, points and stock losses, newest first.</summary>
+    ''' <summary>Recent discounts, special prices and points, newest first.</summary>
     Public Losses As DataTable
 
     Public CustomerCount As Integer
@@ -94,14 +89,13 @@ Public Module DashboardData
         m.ShowDeliveries = Can(role, "delivery", "delivery_report")
         m.ShowCosts = r <> "cashier" AndAlso Can(role, "inventory", "inventory_report", "delivery", "delivery_report", "loss_report")
         m.ShowGiven = Can(role, "loss_report")
-        m.ShowStockLosses = Can(role, "inventory", "inventory_report", "loss_report")
         m.ShowCustomers = Can(role, "customers")
 
         If m.ShowSales Then LoadSales(m, userId)
         If m.ShowStock Then LoadStock(m)
         If m.ShowPeople Then LoadPeople(m, r)
         If m.ShowDeliveries Then LoadDeliveries(m)
-        If m.ShowGiven OrElse m.ShowStockLosses Then LoadLosses(m)
+        If m.ShowGiven Then LoadGiven(m)
         If m.ShowCustomers Then LoadCustomers(m)
         m.LoadedAt = DateTime.Now
         Return m
@@ -118,37 +112,21 @@ Public Module DashboardData
         Return New DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
     End Function
 
-    ' ------------------------------------------------------------------ losses: given away + stock losses
-    Private Sub LoadLosses(m As DashboardModel)
+    ' ------------------------------------------------------------------ given away: discounts, special prices, points
+    Private Sub LoadGiven(m As DashboardModel)
         Dim prm As Dictionary(Of String, Object) = Db.Params("@month", MonthStart())
-        If m.ShowGiven Then
-            m.GivenMonth = Dec(Db.Scalar(
-                "SELECT COALESCE(SUM(s.discount_amount + s.special_discount_amount + s.points_value), 0) " &
-                "FROM sales s WHERE s.created_at >= @month", prm))
-        End If
-        If m.ShowStockLosses Then
-            Dim t As DataTable = Db.Table("SELECT COUNT(*) AS n, COALESCE(SUM(l.qty), 0) AS q, COALESCE(SUM(l.cost_value), 0) AS v " &
-                                          "FROM loss_records l WHERE l.created_at >= @month", prm)
-            m.StockLossCount = CInt(Dec(t.Rows(0)("n")))
-            m.StockLossQty = Dec(t.Rows(0)("q"))
-            m.StockLossValue = Dec(t.Rows(0)("v"))
-        End If
+        m.GivenMonth = Dec(Db.Scalar(
+            "SELECT COALESCE(SUM(s.discount_amount + s.special_discount_amount + s.points_value), 0) " &
+            "FROM sales s WHERE s.created_at >= @month", prm))
 
-        ' one list: what the shop gave up (discounts, special prices, points) and stock that was damaged or lost
-        Dim parts As New List(Of String)()
-        If m.ShowGiven Then
-            parts.Add("SELECT s.created_at AS at, " &
-                      "CASE WHEN s.special_discount_amount > 0 THEN 'Special price' " &
-                      "WHEN s.discount_amount > 0 THEN COALESCE(s.discount_name, 'Discount') ELSE 'Points used' END AS kind, " &
-                      "s.receipt_no AS detail, (s.discount_amount + s.special_discount_amount + s.points_value) AS amount " &
-                      "FROM sales s WHERE (s.discount_amount + s.special_discount_amount + s.points_value) > 0")
-        End If
-        If m.ShowStockLosses Then
-            parts.Add("SELECT l.created_at AS at, CONCAT('Stock: ', REPLACE(l.reason, '_', ' ')) AS kind, " &
-                      "CONCAT(TRIM(CONCAT(p.name, ' ', p.measurement)), ' x', l.qty) AS detail, l.cost_value AS amount " &
-                      "FROM loss_records l JOIN products p ON p.id = l.product_id")
-        End If
-        m.Losses = Db.Table("SELECT * FROM (" & String.Join(" UNION ALL ", parts.ToArray()) & ") x ORDER BY at DESC LIMIT 6")
+        ' the latest receipts where something was given up
+        m.Losses = Db.Table(
+            "SELECT s.created_at AS at, " &
+            "CASE WHEN s.special_discount_amount > 0 THEN 'Special price' " &
+            "WHEN s.discount_amount > 0 THEN COALESCE(s.discount_name, 'Discount') ELSE 'Points used' END AS kind, " &
+            "s.receipt_no AS detail, (s.discount_amount + s.special_discount_amount + s.points_value) AS amount " &
+            "FROM sales s WHERE (s.discount_amount + s.special_discount_amount + s.points_value) > 0 " &
+            "ORDER BY s.created_at DESC LIMIT 6")
         m.Losses.Columns.Add("when_text", GetType(String))
         For Each row As DataRow In m.Losses.Rows
             Dim at As DateTime = Convert.ToDateTime(row("at"))

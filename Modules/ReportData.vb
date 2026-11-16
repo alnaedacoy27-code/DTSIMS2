@@ -323,15 +323,13 @@ Public Module ReportData
 
     Private Sub AddMovementKpis(doc As ReportDoc, r As DateRange)
         Dim t As DataTable = Db.Table("SELECT m.movement_type AS t, COALESCE(SUM(m.qty_change), 0) AS net FROM inventory_movements m WHERE " & MoveWhere & " GROUP BY m.movement_type", MoveParams(r))
-        Dim received As Decimal = 0D, sold As Decimal = 0D, lost As Decimal = 0D, adj As Decimal = 0D
+        Dim received As Decimal = 0D, sold As Decimal = 0D, adj As Decimal = 0D
         For Each row As DataRow In t.Rows
             Select Case Txt(row("t"))
                 Case "delivery_in"
                     received = Dec(row("net"))
                 Case "sale_out"
                     sold = -Dec(row("net"))
-                Case "loss_out"
-                    lost = -Dec(row("net"))
                 Case "adjustment"
                     adj = Dec(row("net"))
             End Select
@@ -339,9 +337,8 @@ Public Module ReportData
         Dim moved As Decimal = Dec(Db.Scalar("SELECT COUNT(DISTINCT m.product_id) FROM inventory_movements m WHERE " & MoveWhere, MoveParams(r)))
         doc.Kpis.Add(New ReportKpi("Stock received", ReportFormat.Whole(received)))
         doc.Kpis.Add(New ReportKpi("Units sold", ReportFormat.Whole(sold)))
-        doc.Kpis.Add(New ReportKpi("Lost / written off", ReportFormat.Whole(lost), lost > 0D))
         doc.Kpis.Add(New ReportKpi("Adjustments (net)", ReportFormat.Whole(adj)))
-        doc.Kpis.Add(New ReportKpi("Net stock change", ReportFormat.Whole(received - sold - lost + adj)))
+        doc.Kpis.Add(New ReportKpi("Net stock change", ReportFormat.Whole(received - sold + adj)))
         doc.Kpis.Add(New ReportKpi("Products moved", ReportFormat.Whole(moved)))
     End Sub
 

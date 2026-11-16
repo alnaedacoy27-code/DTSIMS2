@@ -347,7 +347,7 @@ Public Class DashboardView
         End If
 
         Dim anything As Boolean = m.ShowSales OrElse m.ShowStock OrElse m.ShowPeople OrElse m.ShowDeliveries OrElse
-                                  m.ShowGiven OrElse m.ShowStockLosses OrElse m.ShowCustomers
+                                  m.ShowGiven OrElse m.ShowCustomers
         _message.Visible = Not anything
         If Not anything Then
             _message.Text = "There is nothing for your account on the dashboard. Switch to Menu to open your modules."
@@ -379,7 +379,7 @@ Public Class DashboardView
         End If
         Dim firstRow As Integer = _cards.Count
 
-        ' ---- figures, row 2: stock, deliveries, losses, customers, people
+        ' ---- figures, row 2: stock, deliveries, customers, people
         If m.ShowStock Then
             Dim attention As Integer = m.LowCount + m.OutCount
             AddCard("Low / out of stock").SetValues(ReportFormat.Whole(attention),
@@ -395,12 +395,6 @@ Public Class DashboardView
             AddCard("Draft deliveries").SetValues(ReportFormat.Whole(m.DraftDeliveries),
                 If(m.DraftDeliveries = 0, "Nothing waiting", "Not yet added to stock"),
                 If(m.DraftDeliveries = 0, Green, Color.FromArgb(160, 100, 10)))
-        End If
-        If m.ShowStockLosses Then
-            AddCard("Stock losses, month").SetValues(ReportFormat.Whole(m.StockLossQty),
-                If(m.StockLossCount = 0, "Nothing lost",
-                   If(m.ShowCosts, ReportFormat.Peso(m.StockLossValue) & " at cost", m.StockLossCount & " records")),
-                If(m.StockLossCount = 0, Green, Theme.AlertRed), m.StockLossCount > 0)
         End If
         If m.ShowCustomers Then
             AddCard("Loyalty customers").SetValues(ReportFormat.Whole(m.CustomerCount),
@@ -444,10 +438,10 @@ Public Class DashboardView
                                {If(m.ShowCosts, "COST", "STATUS"), If(m.ShowCosts, "total_cost", "status"), "38", If(m.ShowCosts, "money", "")}},
                 m.Deliveries, "No deliveries yet."))
         End If
-        If m.ShowGiven OrElse m.ShowStockLosses Then
-            _lists.Add(MakeList("Discounts and losses", If(m.ShowGiven, "loss_report", "inventory"),
+        If m.ShowGiven Then
+            _lists.Add(MakeList("Discounts given", "loss_report",
                 New String(,) {{"WHAT", "kind", "34", ""}, {"DETAIL", "detail", "34", ""}, {"AMOUNT", "amount", "32", "money"}},
-                m.Losses, "Nothing given away or lost."))
+                m.Losses, "No discounts given yet."))
         End If
         For Each p As Panel In _lists
             Controls.Add(p)

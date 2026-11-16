@@ -60,6 +60,12 @@ For a fresh database: import `dtsims2_db.sql`, then run `Database/06_sms_queue.s
 ### Menu
 - Customer Accounts and Discounts moved to File Maintenance (their permissions are unchanged).
 
+### Stock losses removed (the shop no longer records them)
+- Dashboard: no "Stock losses, month" card; the bottom-right list is now "Discounts given" (discounts, special prices, points).
+- Inventory Report: no "Lost / written off" figure; Net stock change = Stock received - Units sold + Adjustments.
+- Reset: the "Stock and losses" part is now "Stock levels" (it still empties the old loss_records table).
+- The Loss Report stays: it is about discounts, special prices and points given to customers.
+
 ### Utilities > Audit Trail (Superadmin only)
 - A read-only record of every action: who did what, on which screen, on which computer, and when.
 - Views: *Activity log* (every entry, searchable), *Summary* (actions by type and per day), *By person*.

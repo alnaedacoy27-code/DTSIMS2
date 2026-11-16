@@ -713,7 +713,7 @@ Public Module SystemReset
         Dim l As New List(Of ResetSection)()
         l.Add(New ResetSection("sales", "Sales and receipts", "Every sale and receipt. Customer point balances stay."))
         l.Add(New ResetSection("deliveries", "Deliveries", "Every supplier delivery and its items."))
-        l.Add(New ResetSection("stock", "Stock and losses", "Sets every product's stock to 0 and clears the stock movements and loss records."))
+        l.Add(New ResetSection("stock", "Stock levels", "Sets every product's stock to 0 and clears the stock movement log."))
         l.Add(New ResetSection("products", "Products and categories", "Every product and category. Also clears sales, deliveries and stock, which use them.",
                                "sales", "deliveries", "stock"))
         l.Add(New ResetSection("suppliers", "Suppliers", "Every supplier. Also clears deliveries, which use them.", "deliveries"))
@@ -772,7 +772,7 @@ Public Module SystemReset
                         emptied.AddRange({"delivery_items", "deliveries"})
                     End If
                     If keys.Contains("stock") Then
-                        Say(progress, "Clearing stock and losses...")
+                        Say(progress, "Clearing stock levels...")
                         Run(conn, tx, "DELETE FROM inventory_movements")
                         Run(conn, tx, "DELETE FROM loss_records")
                         Run(conn, tx, "UPDATE products SET qty_on_hand = 0 WHERE qty_on_hand <> 0")

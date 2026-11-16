@@ -88,10 +88,6 @@ Public Module FigureHelp
         add(db, "Draft deliveries",
             "Counts every delivery still in Draft, whatever its date. Their stock is not added until they are sent.",
             "Delivery Management: deliveries with the status Draft.")
-        add(db, "Stock losses, month",
-            "Adds the pieces recorded as damaged, rusted, lost, stolen or cutting waste since the 1st of this month. " &
-            "The amount under it is what those pieces cost the shop.",
-            "The loss records (written off from the inventory).")
         add(db, "Loyalty customers",
             "How many loyalty customers are registered. Under it: the points all customers hold together, and what they " &
             "are worth (points x the peso value of 1 point).",
@@ -153,14 +149,11 @@ Public Module FigureHelp
         add(ir, "Units sold",
             "Adds every piece that left stock through a sale in " & Period & ".",
             "The stock movement log: one 'Sale' line per item on each receipt (POS).")
-        add(ir, "Lost / written off",
-            "Adds every piece written off as damaged, rusted, lost, stolen or cutting waste in " & Period & ".",
-            "The stock movement log: the 'Loss' lines, from the loss records.")
         add(ir, "Adjustments (net)",
             "Manual stock corrections in " & Period & ": pieces added minus pieces removed.",
             "The stock movement log: the 'Adjustment' lines.")
         add(ir, "Net stock change",
-            "Stock received - Units sold - Lost / written off + Adjustments. Above 0 means there is more stock than at the " &
+            "Stock received - Units sold + Adjustments. Above 0 means there is more stock than at the " &
             "start of the period; below 0 means less.",
             "The other figures on this screen.")
         add(ir, "Products moved",
@@ -278,14 +271,14 @@ Public Module FigureHelp
         add(inv, "Stock value (at cost)",
             "For every product in the list: stock on hand x cost price. Added up. It is what the stock cost the shop, " &
             "not what it sells for.",
-            "Current stock (from deliveries in, sales and losses out) and the cost price from the latest delivery.")
+            "Current stock (deliveries in, sales out) and the cost price from the latest delivery.")
         add(inv, "Low stock",
             "Products in the list that still have stock, but at or below their minimum level. Products without a " &
             "minimum level are never low.",
             "Current stock, and the minimum levels in Settings > Stock Threshold.")
         add(inv, "Out of stock",
             "Products in the list with no stock left (0 or less).",
-            "Current stock: deliveries in, minus sales and losses.")
+            "Current stock: deliveries in, minus sales.")
         add(inv, "VAT in the prices",
             "The VAT rate the system uses. Selling prices already include it; it is only used to show how much of a price is VAT.",
             "Settings > VAT.")

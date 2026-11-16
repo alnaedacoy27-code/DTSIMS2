@@ -111,7 +111,9 @@
     <Compile Include="Controls\HomeView.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Controls\DashboardView.vb" />
+    <Compile Include="Controls\DashboardView.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Modules\DashboardData.vb" />
     <Compile Include="Controls\MarqueePanel.vb">
       <SubType>Component</SubType>
