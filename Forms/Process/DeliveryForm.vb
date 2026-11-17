@@ -345,19 +345,20 @@ Public Class DeliveryForm
         _entry.Controls.Add(_lblPreview)
         _entry.Controls.Add(_btnAdd)
 
-        _lblLock.AutoSize = True
+        _lblLock.AutoSize = False
+        _lblLock.Size = New Size(Theme.S(700), Theme.S(22))
         _lblLock.Font = Theme.FontSmall
         _lblLock.ForeColor = Theme.TextMuted
         _lblLock.Location = New Point(Theme.S(24), Theme.S(230))
         _lblLock.Visible = False
 
         _linkUnlock.AutoSize = True
-        _linkUnlock.Text = "Supplier's price changed? Unlock the cost price"
-        _linkUnlock.Font = Theme.FontSmall
+        _linkUnlock.Text = "Supplier changed its price? Click here to unlock the cost"
+        _linkUnlock.Font = Theme.MakeFont("Segoe UI Semibold", 10.0F)
         _linkUnlock.LinkColor = Theme.Maroon
         _linkUnlock.ActiveLinkColor = Theme.MaroonDark
         _linkUnlock.VisitedLinkColor = Theme.Maroon
-        _linkUnlock.LinkBehavior = LinkBehavior.HoverUnderline
+        _linkUnlock.LinkBehavior = LinkBehavior.AlwaysUnderline
         _linkUnlock.Cursor = Cursors.Hand
         _linkUnlock.Visible = False
         AddHandler _linkUnlock.LinkClicked, AddressOf OnUnlockCost
@@ -453,10 +454,23 @@ Public Class DeliveryForm
             _btnAdd.Location = New Point(Math.Max(x + Theme.S(160), w - Theme.S(24) - _btnAdd.Width), y + Theme.S(22))
             _lblPreview.Location = New Point(x, y + Theme.S(12))
             _lblPreview.Width = Math.Max(Theme.S(140), _btnAdd.Left - x - Theme.S(14))
-            _lblLock.Location = New Point(Theme.S(24), y + rowH)
-            _linkUnlock.Location = New Point(_lblLock.Right + Theme.S(14), _lblLock.Top)
 
-            Dim h As Integer = y + rowH + Theme.S(34)
+            ' the lock message wraps to the panel width and the unlock link sits on its own line under it,
+            ' so the link can never run off the edge of a narrow window
+            Dim lockTop As Integer = y + rowH
+            Dim lockW As Integer = Math.Max(Theme.S(300), w - Theme.S(48))
+            Dim textH As Integer = 0
+            If _lblLock.Visible Then
+                textH = TextRenderer.MeasureText(_lblLock.Text, _lblLock.Font, New Size(lockW, 0), TextFormatFlags.WordBreak).Height + Theme.S(4)
+                _lblLock.SetBounds(Theme.S(24), lockTop, lockW, textH)
+            End If
+            Dim linkH As Integer = 0
+            If _linkUnlock.Visible Then
+                _linkUnlock.Location = New Point(Theme.S(24), lockTop + textH + Theme.S(2))
+                linkH = _linkUnlock.Height + Theme.S(4)
+            End If
+
+            Dim h As Integer = y + rowH + textH + linkH + Theme.S(34)
             If _entry.Height <> h Then _entry.Height = h
         Finally
             _layingOut = False
@@ -971,7 +985,7 @@ Public Class DeliveryForm
             _lblLock.Visible = True
             _linkUnlock.Visible = False
         End If
-        _linkUnlock.Location = New Point(_lblLock.Right + Theme.S(14), _lblLock.Top)
+        LayoutEntry()
     End Sub
 
     Private Sub OnUnlockCost(sender As Object, e As LinkLabelLinkClickedEventArgs)
