@@ -186,7 +186,7 @@ Public Class PermissionsForm
         AddHandler grid.SelectionChanged, Sub(s, e) grid.ClearSelection()
     End Sub
 
-    ''' <summary>Modules in menu order (group by group).</summary>
+    ''' <summary>Modules in menu order (group by group), then the Mobile App switch.</summary>
     Private Shared Function ModulesInOrder() As List(Of ModuleInfo)
         Dim l As New List(Of ModuleInfo)()
         For Each g As String In ModuleCatalog.GroupOrder
@@ -194,7 +194,19 @@ Public Class PermissionsForm
                 If m.Group = g Then l.Add(m)
             Next
         Next
+        l.Add(ModuleCatalog.MobileApp)
         Return l
+    End Function
+
+    ''' <summary>"Products and Delivery Management": the modules that follow the Mobile App switch.</summary>
+    Private Shared Function LinkedTitles() As String
+        Dim names As New List(Of String)()
+        For Each k As String In Permissions.MobileLinked
+            For Each m As ModuleInfo In ModuleCatalog.All
+                If m.Key = k Then names.Add(m.Title)
+            Next
+        Next
+        Return String.Join(" and ", names)
     End Function
 
     ''' <summary>The group name only on the first row of each group (easier to read).</summary>
@@ -499,19 +511,52 @@ Public Class PermissionsForm
 
         Dim cell As DataGridViewCell = _roleGrid.Rows(e.RowIndex).Cells(name)
         Dim allow As Boolean = Not CBool(cell.Value)
+        Dim roleName As String = Permissions.RoleDisplay(name)
+        Dim isApp As Boolean = (m.Key = Permissions.MobileAppKey)
+
+        ' the Mobile App switch also moves Products and Delivery Management: say so before doing it
+        If isApp Then
+            Dim question As String
+            If allow Then
+                question = "Allow the Mobile App for every " & roleName & "?" & Environment.NewLine & Environment.NewLine &
+                           "This also allows " & LinkedTitles() & " on the computers, for every " & roleName & "."
+            Else
+                question = "Take the Mobile App away from every " & roleName & "?" & Environment.NewLine & Environment.NewLine &
+                           "This also removes " & LinkedTitles() & " from every " & roleName & " on the computers, " &
+                           "and signs out their phones."
+            End If
+            question &= Environment.NewLine & Environment.NewLine & "A setting made for one person still wins over the role."
+            If Not Confirm(Me, "Mobile App", question, MessageBoxIcon.Question) Then Return
+        End If
+
         Try
             PermissionRepository.SetRole(name, m.Key, allow)
         Catch ex As Exception
             Say("Could not save: " & ex.Message, True)
             Return
         End Try
+
         _roleRules(name & "|" & m.Key) = allow
-        cell.Value = allow
-        _roleGrid.InvalidateCell(cell)
-        Dim roleName As String = Permissions.RoleDisplay(name)
-        AuditLog.Write("PERMISSION", "Permission Maintenance", roleName & ": " & m.Title & If(allow, " allowed", " not allowed"))
-        Say("Saved. " & If(allow, "Every " & roleName & " can now open " & m.Title & " (unless set to Deny for them).",
-                                  "A " & roleName & " can no longer open " & m.Title & " (unless set to Allow for them)."), False)
+        If isApp Then
+            For Each k As String In Permissions.MobileLinked
+                _roleRules(name & "|" & k) = allow
+            Next
+            FillRoleValues()
+        Else
+            cell.Value = allow
+            _roleGrid.InvalidateCell(cell)
+        End If
+
+        AuditLog.Write("PERMISSION", "Permission Maintenance",
+                       roleName & ": " & m.Title & If(allow, " allowed", " not allowed") &
+                       If(isApp, " (also " & LinkedTitles() & ")", ""))
+        If isApp Then
+            Say("Saved. " & If(allow, "Every " & roleName & " can now use the Mobile App, " & LinkedTitles() & ".",
+                                      "A " & roleName & " can no longer use the Mobile App or open " & LinkedTitles() & "."), False)
+        Else
+            Say("Saved. " & If(allow, "Every " & roleName & " can now open " & m.Title & " (unless set to Deny for them).",
+                                      "A " & roleName & " can no longer open " & m.Title & " (unless set to Allow for them)."), False)
+        End If
         FillUserValues()
     End Sub
 
@@ -532,6 +577,25 @@ Public Class PermissionsForm
         Dim after As Integer = If(value.HasValue, If(value.Value, 1, 0), -1)
         If before = after Then Return
 
+        Dim isApp As Boolean = (m.Key = Permissions.MobileAppKey)
+
+        ' the Mobile App switch also moves Products and Delivery Management: say so before doing it
+        If isApp Then
+            Dim question As String
+            If Not value.HasValue Then
+                question = "Make " & _userName & " follow the " & Permissions.RoleDisplay(_userRole) & " role for the Mobile App?" &
+                           Environment.NewLine & Environment.NewLine &
+                           LinkedTitles() & " follow the role too. If the role does not give the Mobile App, their phone is signed out."
+            ElseIf value.Value Then
+                question = "Give " & _userName & " the Mobile App?" & Environment.NewLine & Environment.NewLine &
+                           "This also allows " & LinkedTitles() & " for them on the computers."
+            Else
+                question = "Take the Mobile App away from " & _userName & "?" & Environment.NewLine & Environment.NewLine &
+                           "This also removes " & LinkedTitles() & " for them on the computers, and signs out their phone."
+            End If
+            If Not Confirm(Me, "Mobile App", question, MessageBoxIcon.Question) Then Return
+        End If
+
         Try
             If Not PermissionRepository.SetUser(_userId, m.Key, value) Then
                 Say("This person's permissions cannot be changed.", True)
@@ -542,15 +606,22 @@ Public Class PermissionsForm
             Return
         End Try
 
-        If value.HasValue Then
-            _userRules(m.Key) = value.Value
-        Else
-            _userRules.Remove(m.Key)
-        End If
+        Dim keys As New List(Of String)()
+        keys.Add(m.Key)
+        If isApp Then keys.AddRange(Permissions.MobileLinked)
+        For Each k As String In keys
+            If value.HasValue Then
+                _userRules(k) = value.Value
+            Else
+                _userRules.Remove(k)
+            End If
+        Next
+
         Dim what As String = If(Not value.HasValue, "follows the " & Permissions.RoleDisplay(_userRole) & " role",
                                 If(value.Value, "allowed", "not allowed"))
-        AuditLog.Write("PERMISSION", "Permission Maintenance", _userName & ": " & m.Title & " " & what)
-        Say("Saved. " & _userName & ": " & m.Title & " " & what & ".", False)
+        AuditLog.Write("PERMISSION", "Permission Maintenance",
+                       _userName & ": " & m.Title & " " & what & If(isApp, " (also " & LinkedTitles() & ")", ""))
+        Say("Saved. " & _userName & ": " & m.Title & " " & what & If(isApp, " (and " & LinkedTitles() & ")", "") & ".", False)
         FillUserValues()
         _usersSig = ""      ' the +N count in the list changes
         Try
@@ -563,8 +634,8 @@ Public Class PermissionsForm
     Private Sub OnRestoreDefaults(sender As Object, e As EventArgs)
         If Not Confirm(Me, "Restore defaults",
                        "Put Admin and Cashier back to the original settings?" & Environment.NewLine & Environment.NewLine &
-                       "Admin: everything except the Settings and User Monitoring." & Environment.NewLine &
-                       "Cashier: POS, Sales Report and Text Size." & Environment.NewLine & Environment.NewLine &
+                       "Admin: everything except the Settings and User Monitoring, and the Mobile App." & Environment.NewLine &
+                       "Cashier: POS, Sales Report and Text Size, and no Mobile App." & Environment.NewLine & Environment.NewLine &
                        "Settings made for one person are kept.", MessageBoxIcon.Question) Then Return
         Try
             PermissionRepository.RestoreRoleDefaults()

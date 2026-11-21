@@ -20,6 +20,15 @@ Public Module Permissions
     ''' <summary>Only the Superadmin can ever open these.</summary>
     Public ReadOnly SuperadminOnly As String() = {"database_settings", "permissions", "audit_trail"}
 
+    ''' <summary>The permission that lets a person sign in to the phone app (see MobileLinked).</summary>
+    Public Const MobileAppKey As String = "mobile_app"
+
+    ''' <summary>
+    ''' The modules the phone app is built on. They follow the Mobile App switch: giving a person (or a role) the
+    ''' Mobile App also gives these, and taking it away removes them, so nobody can sign in to an app that does nothing.
+    ''' </summary>
+    Public ReadOnly MobileLinked As String() = {"products", "delivery"}
+
     ''' <summary>The roles whose access can be changed.</summary>
     Public ReadOnly EditableRoles As String() = {"admin", "cashier"}
 
@@ -150,13 +159,28 @@ Public Module PermissionRepository
         Return d
     End Function
 
+    Private Sub UpsertRole(role As String, moduleKey As String, allowed As Boolean)
+        Db.NonQuery("INSERT INTO role_permissions (role, module_key, is_allowed) VALUES (@r, @k, @a) " &
+                    "ON DUPLICATE KEY UPDATE is_allowed = @a",
+                    Db.Params("@r", role, "@k", moduleKey, "@a", If(allowed, 1, 0)))
+    End Sub
+
+    ''' <summary>
+    ''' Switches a module for a role. For the Mobile App it also switches the modules the app uses (MobileLinked),
+    ''' and when the Mobile App is taken away the phones of those people are signed out.
+    ''' </summary>
     Public Function SetRole(role As String, moduleKey As String, allowed As Boolean) As Boolean
         Dim r As String = Permissions.NormalizeRole(role)
         If Array.IndexOf(Permissions.EditableRoles, r) < 0 Then Return False
         If Permissions.IsSuperadminOnly(moduleKey) Then Return False
-        Db.NonQuery("INSERT INTO role_permissions (role, module_key, is_allowed) VALUES (@r, @k, @a) " &
-                    "ON DUPLICATE KEY UPDATE is_allowed = @a",
-                    Db.Params("@r", r, "@k", moduleKey, "@a", If(allowed, 1, 0)))
+
+        UpsertRole(r, moduleKey, allowed)
+        If moduleKey = Permissions.MobileAppKey Then
+            For Each linked As String In Permissions.MobileLinked
+                UpsertRole(r, linked, allowed)
+            Next
+            If Not allowed Then EndMobileSessionsForRole(r)
+        End If
         Return True
     End Function
 
@@ -165,8 +189,9 @@ Public Module PermissionRepository
         For Each r As String In Permissions.EditableRoles
             For Each m As ModuleInfo In ModuleCatalog.All
                 If Permissions.IsSuperadminOnly(m.Key) Then Continue For
-                SetRole(r, m.Key, Permissions.DefaultAccess(r, m.Key))
+                UpsertRole(r, m.Key, Permissions.DefaultAccess(r, m.Key))
             Next
+            UpsertRole(r, Permissions.MobileAppKey, Permissions.DefaultAccess(r, Permissions.MobileAppKey))
         Next
     End Sub
 
@@ -195,15 +220,28 @@ Public Module PermissionRepository
         Dim role As String = Permissions.NormalizeRole(UserRepository.GetRole(userId))
         If Array.IndexOf(Permissions.EditableRoles, role) < 0 Then Return False
 
-        If allowed.HasValue Then
-            Db.NonQuery("INSERT INTO user_permissions (user_id, module_key, is_allowed) VALUES (@u, @k, @a) " &
-                        "ON DUPLICATE KEY UPDATE is_allowed = @a",
-                        Db.Params("@u", userId, "@k", moduleKey, "@a", If(allowed.Value, 1, 0)))
-        Else
-            Db.NonQuery("DELETE FROM user_permissions WHERE user_id = @u AND module_key = @k",
-                        Db.Params("@u", userId, "@k", moduleKey))
-        End If
+        ' the Mobile App moves together with the modules the app uses
+        Dim keys As New List(Of String)()
+        keys.Add(moduleKey)
+        If moduleKey = Permissions.MobileAppKey Then keys.AddRange(Permissions.MobileLinked)
+
+        For Each k As String In keys
+            If allowed.HasValue Then
+                Db.NonQuery("INSERT INTO user_permissions (user_id, module_key, is_allowed) VALUES (@u, @k, @a) " &
+                            "ON DUPLICATE KEY UPDATE is_allowed = @a",
+                            Db.Params("@u", userId, "@k", k, "@a", If(allowed.Value, 1, 0)))
+            Else
+                Db.NonQuery("DELETE FROM user_permissions WHERE user_id = @u AND module_key = @k",
+                            Db.Params("@u", userId, "@k", k))
+            End If
+        Next
         NotifyChanged()
+
+        ' denied, or back to following a role that does not give the app: their phone is signed out
+        If moduleKey = Permissions.MobileAppKey Then
+            Dim stillAllowed As Boolean = If(allowed.HasValue, allowed.Value, RoleGivesMobileApp(role))
+            If Not stillAllowed Then EndMobileSessionsForUser(userId)
+        End If
         Return True
     End Function
 
@@ -211,6 +249,47 @@ Public Module PermissionRepository
     Public Sub ClearUser(userId As Integer)
         Db.NonQuery("DELETE FROM user_permissions WHERE user_id = @u", Db.Params("@u", userId))
         NotifyChanged()
+        Dim role As String = Permissions.NormalizeRole(UserRepository.GetRole(userId))
+        If Not RoleGivesMobileApp(role) Then EndMobileSessionsForUser(userId)
+    End Sub
+
+    ''' <summary>What the role gives for the Mobile App, read from the database (the factory setting if there is no row yet).</summary>
+    Private Function RoleGivesMobileApp(role As String) As Boolean
+        Try
+            Dim o As Object = Db.Scalar("SELECT is_allowed FROM role_permissions WHERE role = @r AND module_key = @k",
+                                        Db.Params("@r", role, "@k", Permissions.MobileAppKey))
+            If o IsNot Nothing AndAlso o IsNot DBNull.Value Then Return Convert.ToInt32(o) <> 0
+        Catch
+            ' fall through to the factory setting
+        End Try
+        Return Permissions.DefaultAccess(role, Permissions.MobileAppKey)
+    End Function
+
+    ''' <summary>
+    ''' Signs out the phones of everyone with this role who does not have their own Allow for the Mobile App.
+    ''' The phone finds out on its next request (a few seconds) and goes back to the login screen.
+    ''' </summary>
+    Private Sub EndMobileSessionsForRole(role As String)
+        Try
+            Db.NonQuery("UPDATE user_sessions s INNER JOIN users u ON u.id = s.user_id " &
+                        "SET s.is_active = 0, s.logout_at = NOW(), s.end_reason = 'Mobile app access removed' " &
+                        "WHERE s.session_id LIKE 'mobile-%' AND s.is_active = 1 AND u.role = @r " &
+                        "AND NOT EXISTS (SELECT 1 FROM user_permissions p WHERE p.user_id = u.id " &
+                        "AND p.module_key = @k AND p.is_allowed = 1)",
+                        Db.Params("@r", role, "@k", Permissions.MobileAppKey))
+        Catch
+            ' ignore: the phone's next request still checks the permission
+        End Try
+    End Sub
+
+    Private Sub EndMobileSessionsForUser(userId As Integer)
+        Try
+            Db.NonQuery("UPDATE user_sessions SET is_active = 0, logout_at = NOW(), end_reason = 'Mobile app access removed' " &
+                        "WHERE session_id LIKE 'mobile-%' AND is_active = 1 AND user_id = @u",
+                        Db.Params("@u", userId))
+        Catch
+            ' ignore
+        End Try
     End Sub
 
     ' user_permissions has no trigger (the app's database account cannot create triggers), so tell the other laptops here

@@ -27,6 +27,13 @@ Public Module ModuleCatalog
 
     Public ReadOnly All As List(Of ModuleInfo) = BuildAll()
 
+    ''' <summary>
+    ''' Access to the phone app. It is not a screen (so it is not in the menu or on the home tiles): it only
+    ''' appears in Settings > Permission Maintenance. Switching it also switches the modules the app uses.
+    ''' </summary>
+    Public ReadOnly MobileApp As New ModuleInfo(Permissions.MobileAppKey, "Mobile App", "Mobile App",
+                                                "Sign in to the phone app. Allowing it also allows Products and Delivery Management; turning it off removes both")
+
     Private Function BuildAll() As List(Of ModuleInfo)
         Dim l As New List(Of ModuleInfo)()
 
