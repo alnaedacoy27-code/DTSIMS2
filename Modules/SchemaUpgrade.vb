@@ -71,7 +71,32 @@ Public Module SchemaUpgrade
     Public Sub EnsureSeedRows(conn As MySqlConnection)
         Exec(conn, "INSERT IGNORE INTO payment_methods (name, kind, needs_reference, is_active, sort_order) VALUES ('Cash', 'cash', 0, 1, 0)")
         SeedRoleRows(conn)
+        EnsureCurrentRules(conn)
     End Sub
+
+    ''' <summary>
+    ''' Small rule changes that do not need a new database version, so older copies of the app keep
+    ''' working. Runs at every start and after a restore; each step looks first, so it is safe to repeat.
+    ''' </summary>
+    Public Sub EnsureCurrentRules(conn As MySqlConnection)
+        ' Suppliers: different companies may share an address (one building, several shops);
+        ' only the SAME company at the SAME address is a duplicate.
+        If Not IndexExists(conn, "suppliers", "uq_suppliers_company_address") Then
+            Exec(conn, "ALTER TABLE `suppliers` ADD UNIQUE KEY `uq_suppliers_company_address` (`company_name`, `company_address`)")
+        End If
+        If IndexExists(conn, "suppliers", "uq_suppliers_address") Then
+            Exec(conn, "ALTER TABLE `suppliers` DROP INDEX `uq_suppliers_address`")
+        End If
+    End Sub
+
+    Private Function IndexExists(conn As MySqlConnection, table As String, index As String) As Boolean
+        Using cmd As New MySqlCommand("SELECT COUNT(*) FROM information_schema.statistics " &
+                                      "WHERE table_schema = DATABASE() AND table_name = @t AND index_name = @i", conn)
+            cmd.Parameters.AddWithValue("@t", table)
+            cmd.Parameters.AddWithValue("@i", index)
+            Return Convert.ToInt32(cmd.ExecuteScalar()) > 0
+        End Using
+    End Function
 
     ''' <summary>MySQL has no ADD COLUMN IF NOT EXISTS: look first, so the upgrade can run twice.</summary>
     Private Sub AddColumnIfMissing(conn As MySqlConnection, table As String, column As String, definition As String)

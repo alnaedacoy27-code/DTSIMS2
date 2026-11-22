@@ -7,7 +7,7 @@ Imports System.Windows.Forms
 
 ''' <summary>
 ''' File Maintenance > Suppliers. Same person / company / phone may repeat (branches);
-''' only the address must be unique. Refreshes by itself (ILiveForm).
+''' only company + address must be unique. Refreshes by itself (ILiveForm).
 ''' </summary>
 <System.ComponentModel.DesignerCategory("Code")>
 Public Class SuppliersForm

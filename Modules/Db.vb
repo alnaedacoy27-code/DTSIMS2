@@ -138,6 +138,11 @@ Public Module Db
                                   "). Run the newer scripts in the Database folder."
                         Return DbStatus.SchemaOutdated
                     End If
+                    ' small rule changes (no new version); never stop the app over them
+                    Try
+                        SchemaUpgrade.EnsureCurrentRules(conn)
+                    Catch
+                    End Try
                 End Using
             End Using
             Return DbStatus.Ok

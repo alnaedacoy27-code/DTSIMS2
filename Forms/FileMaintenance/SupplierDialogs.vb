@@ -22,7 +22,7 @@ Public Class SupplierEditForm
     ''' <summary>Add a new supplier. Pass a template to prefill a new branch of an existing company.</summary>
     Public Sub New(Optional company As String = "", Optional person As String = "",
                    Optional number As String = "", Optional email As String = "")
-        MyBase.New("Add supplier", "A company and the person you deal with. Each branch needs its own address.", 560, 540)
+        MyBase.New("Add supplier", "A company and the person you deal with. Each branch of a company needs its own address.", 560, 540)
         _isEdit = False
         _supplierId = 0
         Build()
@@ -131,8 +131,13 @@ Public Class SupplierEditForm
                                    If(_isEdit, "Edited", "Added") & " supplier '" & _company.Value.Trim() & "' (" & _address.Value.Trim() & ")")
                     DialogResult = DialogResult.OK
                 Case SaveResult.Duplicate
-                    ShowMessage("Another supplier already uses this address. Branches can share the person, company and phone number, but each needs its own address.", True)
+                    ShowMessage("This company is already saved at this address. Another branch needs its own address; a different company may share it.", True)
                     _address.FocusInput()
+                Case SaveResult.NumberTaken
+                    Dim owner As String = SupplierRepository.NumberOwner(_number.Value, _person.Value, If(_isEdit, _supplierId, 0))
+                    ShowMessage(_number.Value.Trim() & " is already the number of " & If(owner.Length > 0, owner, "another contact person") &
+                                ". One number belongs to one person; the same person may deal with several companies.", True)
+                    _number.FocusInput()
                 Case SaveResult.NotFound
                     ShowMessage("This supplier no longer exists.", True)
                 Case Else

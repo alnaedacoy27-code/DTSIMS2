@@ -12,8 +12,8 @@ Public Class SupplierCounts
 End Class
 
 ''' <summary>
-''' Suppliers. The same person, company and phone number may repeat (branches);
-''' only the ADDRESS must be different.
+''' Suppliers. The same person, company and phone number may repeat (branches), and different
+''' companies may share an address; only the same company at the same address is a duplicate.
 ''' </summary>
 Public Module SupplierRepository
 
@@ -65,8 +65,23 @@ Public Module SupplierRepository
         Return r
     End Function
 
-    ''' <summary>Duplicate = this address is already used by another supplier.</summary>
+    ''' <summary>Duplicate = this company is already saved at this address.</summary>
+    ''' <summary>
+    ''' A contact number belongs to one person: the name already saved with this number under a DIFFERENT
+    ''' contact person, or "" when the number is free or used by the same person (at other companies or branches).
+    ''' </summary>
+    Public Function NumberOwner(number As String, person As String, exceptId As Integer) As String
+        If String.IsNullOrWhiteSpace(number) Then Return ""
+        Dim o As Object = Db.Scalar(
+            "SELECT name FROM suppliers WHERE contact_number = @t AND name <> @n AND id <> @id LIMIT 1",
+            Db.Params("@t", number.Trim(), "@n", Tidy(person), "@id", exceptId))
+        If o Is Nothing OrElse o Is DBNull.Value Then Return ""
+        Return o.ToString()
+    End Function
+
+    ''' <summary>Duplicate = same company at this address; NumberTaken = the number is another person's.</summary>
     Public Function CreateSupplier(name As String, company As String, number As String, address As String, email As String) As SaveResult
+        If NumberOwner(number, name, 0).Length > 0 Then Return SaveResult.NumberTaken
         Try
             Db.NonQuery(
                 "INSERT INTO suppliers (name, company_name, contact_number, company_address, email) VALUES (@n, @c, @t, @a, @e)",
@@ -78,6 +93,7 @@ Public Module SupplierRepository
     End Function
 
     Public Function UpdateSupplier(id As Integer, name As String, company As String, number As String, address As String, email As String) As SaveResult
+        If NumberOwner(number, name, id).Length > 0 Then Return SaveResult.NumberTaken
         Try
             Dim rows As Integer = Db.NonQuery(
                 "UPDATE suppliers SET name = @n, company_name = @c, contact_number = @t, company_address = @a, email = @e WHERE id = @id",

@@ -18,6 +18,8 @@ Public Enum SaveResult
     Failed
     ' a required value is missing (name, size ...)
     Invalid
+    ''' <summary>Suppliers: this contact number already belongs to another contact person.</summary>
+    NumberTaken
 End Enum
 
 ''' <summary>Makes "2 x 2 x 3 MM" and "2X2X3mm" the same thing: 2x2x3mm.</summary>

@@ -119,6 +119,7 @@ Public Class MainMenuForm
         _menu.Items.Clear()
 
         Dim home As New ToolStripMenuItem("Home")
+        home.ToolTipText = "Home (" & ShortcutText(HomeShortcut) & ")"
         AddHandler home.Click, AddressOf OnHomeClick
         _menu.Items.Add(home)
 
@@ -130,7 +131,9 @@ Public Class MainMenuForm
 
                 Dim item As New ToolStripMenuItem(m.Title)
                 item.Tag = m
-                If m.Shortcut <> Keys.None Then item.ShortcutKeys = m.Shortcut
+                ' shown on the menu only: the keys themselves are handled in ProcessCmdKey, so they also
+                ' work while a module screen (a form inside this window) has the keyboard focus
+                If m.Shortcut <> Keys.None Then item.ShortcutKeyDisplayString = ShortcutText(m.Shortcut)
                 AddHandler item.Click, AddressOf OnMenuItemClick
                 group.DropDownItems.Add(item)
             Next
@@ -493,6 +496,42 @@ Public Class MainMenuForm
         MyBase.OnShown(e)
         PerfLog.Mark("main window shown")
     End Sub
+
+    ' ------------------------------------------------------------------ shortcut keys
+    Private Const HomeShortcut As Keys = Keys.Alt Or Keys.H
+
+    Private Shared Function ShortcutText(k As Keys) As String
+        Return New KeysConverter().ConvertToString(k)
+    End Function
+
+    ''' <summary>
+    ''' The module shortcuts (Alt+P, Alt+S, F2 ...) for the whole window. Every key pressed in a module
+    ''' screen passes through here (a control hands the keys it does not use to its parent), so they work
+    ''' on every screen, not only before the first module is opened. Menu-strip shortcuts did not:
+    ''' they stopped once a module form inside this window had the focus.
+    ''' </summary>
+    Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
+        ' the POS has its own keys, and leaving it by accident would lose the sale
+        If Not _posMode AndAlso (msg.Msg = &H100 OrElse msg.Msg = &H104) Then   ' WM_KEYDOWN / WM_SYSKEYDOWN
+            ' opened after this key is finished: the screen that has the key is closed by the switch
+            If keyData = HomeShortcut Then
+                If _currentKey.Length > 0 Then
+                    BeginInvoke(New Action(Sub()
+                                               If Not BlockedByDatabaseTask() Then ShowHome()
+                                           End Sub))
+                End If
+                Return True
+            End If
+            For Each m As ModuleInfo In ModuleCatalog.All
+                If m.Shortcut = Keys.None OrElse m.Shortcut <> keyData Then Continue For
+                If Not Permissions.CanAccess(AppSession.Role, m.Key) Then Exit For   ' not theirs: let the key through
+                Dim target As ModuleInfo = m
+                If target.Key <> _currentKey Then BeginInvoke(New Action(Sub() OpenModule(target)))   ' already open: keep what is typed
+                Return True
+            Next
+        End If
+        Return MyBase.ProcessCmdKey(msg, keyData)
+    End Function
 
     Protected Overrides Sub OnKeyDown(e As KeyEventArgs)
 #If DEBUG Then
